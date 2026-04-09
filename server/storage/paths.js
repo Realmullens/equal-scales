@@ -31,31 +31,33 @@ function sanitizeFolderName(name) {
 }
 
 /**
- * Build a human-readable directory name from a display name.
- * If a collision exists, appends a short numeric suffix.
- * Example: "Jane Doe" or "Jane Doe (2)"
+ * Build directory name: Name_ID
+ * Name comes first for alphabetical sorting in Finder.
+ * ID is appended for uniqueness.
+ * Example: "Jane Doe_client_001"
  */
-function buildClientDirName(name) {
-  return sanitizeFolderName(name);
+function buildClientDirName(name, id) {
+  return `${sanitizeFolderName(name)}_${id}`;
 }
 
-function buildMatterDirName(name) {
-  return sanitizeFolderName(name);
+function buildMatterDirName(name, id) {
+  return `${sanitizeFolderName(name)}_${id}`;
 }
 
 /**
  * Resolve the filesystem path for a client directory.
- * Uses the human-readable client name as the folder name.
+ * Format: ClientName_clientID — sorts alphabetically by name in Finder.
  */
-function clientDir(clientName) {
-  return path.join(CLIENTS_DIR, buildClientDirName(clientName));
+function clientDir(clientName, clientId) {
+  return path.join(CLIENTS_DIR, buildClientDirName(clientName, clientId));
 }
 
 /**
  * Resolve the filesystem path for a matter directory under a client.
+ * Format: MatterName_matterID
  */
-function matterDir(clientDirPath, matterName) {
-  return path.join(clientDirPath, 'matters', buildMatterDirName(matterName));
+function matterDir(clientDirPath, matterName, matterId) {
+  return path.join(clientDirPath, 'matters', buildMatterDirName(matterName, matterId));
 }
 
 /**
