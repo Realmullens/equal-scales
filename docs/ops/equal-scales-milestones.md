@@ -61,7 +61,7 @@ Outcome tests:
 ---
 
 ## Milestone 2 — Template-first drafting MVP
-- Status: pending
+- Status: in_progress (Slice 01 done: 74/74 tests, 2026-04-09)
 - Goal: prove the matter-scoped drafting loop before advanced document features
 - Depends on: milestone 1
 

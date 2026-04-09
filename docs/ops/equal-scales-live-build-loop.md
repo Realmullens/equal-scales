@@ -175,6 +175,20 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 2 Slice 01)
+- **Slice:** End-to-End Template-First Drafting Loop Verification
+- **Result:** ALL OUTCOME TESTS PASSED (74/74 tests)
+- **What was verified:**
+  - OUTCOME-B1: Template library browsable (5 templates, metadata complete, type filtering, body retrieval)
+  - OUTCOME-B2: Draft prompt assembly (template + matter context + user instructions → complete prompt)
+  - OUTCOME-B3: Draft uses scoped matter context (client profile, matter.md, facts.md — no unrelated data)
+  - OUTCOME-B4: Save and reopen draft (file on disk, DB record, content matches, template origin preserved)
+  - Draft versioning: v1/v2 coexist, versions sorted, old versions preserved
+  - Cross-matter isolation: same title in different matters has independent version numbering
+- **Files added:** `server/tests/verify-drafting-loop-e2e.js`
+- **Verification command:** `cd server && node tests/verify-drafting-loop-e2e.js`
+- **Cumulative verification:** M1 (167 tests) + M2-S01 (74 tests) = 241 tests
+
 ### 2026-04-09 (Milestone 1 Slice 03)
 - **Slice:** Vault Filesystem Integrity Verification
 - **Result:** ALL ACCEPTANCE CRITERIA PASSED (64/64 tests)
@@ -246,10 +260,9 @@ None currently.
 
 ## Next automatic task
 
-Milestone 1 is now complete (3 slices, 167 total tests).
+Milestone 2 Slice 01 complete (74 tests). The core drafting loop (B1-B4) is verified at the backend level.
 
-Next milestone: Milestone 2 — Template-first drafting MVP.
-This builds on the verified M1 foundation to prove the matter-scoped drafting loop.
+Next: Milestone 2 Slice 02 — verify the renderer-side drafting UX works end-to-end (workspace selector → template click → prompt sent → draft saved → draft preview → revision flow). This is a manual/integration verification since it requires the Electron app + Claude Agent SDK.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
