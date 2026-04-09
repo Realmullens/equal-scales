@@ -175,6 +175,24 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 1 Slice 03)
+- **Slice:** Vault Filesystem Integrity Verification
+- **Result:** ALL ACCEPTANCE CRITERIA PASSED (64/64 tests)
+- **What was verified:**
+  - Vault root structure (VAULT_ROOT, CLIENTS_DIR, TEMPLATES_DIR exist)
+  - Client vault creation: directory + profile.md + notes.md + matters/ subdirectory
+  - Starter file content contains client/matter names and expected structure
+  - Idempotency: re-running vault creation does not overwrite custom edits
+  - Matter vault creation: directory + matter.md + facts.md + tasks.md + drafts/ + source-documents/
+  - Path helpers: clientDir, matterDir, matterDraftsDir, matterSourceDocsDir produce correct paths
+  - Vault path safety: isInsideVault blocks traversal, prefix escapes, system paths
+  - Template directory structure: all 5 categories exist with seeded templates
+  - DB-stored paths match actual filesystem paths
+- **Files added:** `server/tests/verify-vault-filesystem-integrity.js`
+- **Verification command:** `cd server && node tests/verify-vault-filesystem-integrity.js`
+- **Cumulative M1 verification:** 41 + 62 + 64 = 167 tests across 3 slices
+- **Next:** Milestone 1 foundation is now fully verified. Ready to advance to Milestone 2 (template-first drafting MVP) or begin document workspace shell.
+
 ### 2026-04-09 (Milestone 1 Slice 02)
 - **Slice:** Template, Draft, and Conversation Foundation Hardening
 - **Result:** ALL ACCEPTANCE CRITERIA PASSED (62/62 tests)
@@ -228,14 +246,10 @@ None currently.
 
 ## Next automatic task
 
-Execute Milestone 1 Slice 03: Vault Filesystem Integrity Verification.
+Milestone 1 is now complete (3 slices, 167 total tests).
 
-Focus:
-- verify vault directory creation on client/matter creation
-- verify starter markdown files are written (profile.md, notes.md, matter.md, facts.md, tasks.md)
-- verify drafts/ and source-documents/ directories created for matters
-- verify vault path safety (no traversal outside vault root)
-- add repeatable verification script for filesystem behavior
+Next milestone: Milestone 2 — Template-first drafting MVP.
+This builds on the verified M1 foundation to prove the matter-scoped drafting loop.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened

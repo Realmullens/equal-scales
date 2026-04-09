@@ -37,14 +37,14 @@ Completion test:
 ---
 
 ## Milestone 1 — Legal workspace data foundation
-- Status: in_progress
+- Status: done (167 total tests across 3 slices, 2026-04-09)
 - Goal: establish durable first-class legal workspace entities
 - Depends on: milestone 0
 
 Tasks:
 - Slice 01 — client and matter foundation hardening — done (41/41 tests, 2026-04-09)
 - Slice 02 — template, draft, and conversation foundation hardening — done (62/62 tests, 2026-04-09)
-- Slice 03 — vault filesystem integrity verification — pending
+- Slice 03 — vault filesystem integrity verification — done (64/64 tests, 2026-04-09)
 - local vault path strategy
 - initialize durable storage foundations
 - clients repository
