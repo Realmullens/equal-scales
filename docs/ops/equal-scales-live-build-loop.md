@@ -175,7 +175,20 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
-### 2026-04-09
+### 2026-04-09 (Milestone 1 Slice 01)
+- **Slice:** Client and Matter Foundation Hardening
+- **Result:** ALL ACCEPTANCE CRITERIA PASSED (41/41 tests + 6 API checks)
+- **What was verified:**
+  - AC1: Database init is safe and idempotent (tables, FK, WAL, re-init)
+  - AC2: Client CRUD works (create, get by ID/slug, list, slug disambiguation, root_path update)
+  - AC3: Matter CRUD works (create under client, get, list by client, no cross-client leakage, slug disambiguation, matter_path update)
+  - AC4: Invalid input rejected (empty name → 400, missing clientId → 400, nonexistent client → 404, FK constraint on nonexistent client)
+  - AC5: Repeatable verification script: `cd server && node tests/verify-client-matter-foundation.js`
+- **Files added:** `server/tests/verify-client-matter-foundation.js`
+- **Files unchanged:** All existing storage/route code passed without needing modifications — earlier Codex review fixes had already hardened slug disambiguation, cross-client ownership validation, and input validation
+- **Next recommended slice:** Milestone 1 Slice 02 — Template and Draft Foundation Hardening (verify template sync, draft creation/versioning, cross-client ownership checks, add verification script)
+
+### 2026-04-09 (Milestone 0)
 - Created initial agentic development loop strategy doc
 - Created this live build loop file
 - Created the outcome tests file
@@ -203,12 +216,14 @@ None currently.
 
 ## Next automatic task
 
-Execute Milestone 1 Slice 01: Client and Matter Foundation Hardening.
+Execute Milestone 1 Slice 02: Template and Draft Foundation Hardening.
 
-Execution package:
-- task doc: `docs/ops/equal-scales-m1-slice-01-client-matter-foundation.md`
-- Codex prompt: `docs/ops/equal-scales-m1-slice-01-codex-prompt.md`
-- Claude Code prompt: `docs/ops/equal-scales-m1-slice-01-claude-code-prompt.md`
+Focus:
+- verify template sync from filesystem to DB (idempotent, purges stale)
+- verify draft creation with version numbering and cross-client ownership validation
+- verify conversations and messages repository behavior
+- add repeatable verification script for templates/drafts/conversations
+- update milestone tracker status
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened

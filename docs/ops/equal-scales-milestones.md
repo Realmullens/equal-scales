@@ -42,7 +42,7 @@ Completion test:
 - Depends on: milestone 0
 
 Tasks:
-- Slice 01 — client and matter foundation hardening (`docs/ops/equal-scales-m1-slice-01-client-matter-foundation.md`) — in_progress
+- Slice 01 — client and matter foundation hardening (`docs/ops/equal-scales-m1-slice-01-client-matter-foundation.md`) — done (41/41 tests, 2026-04-09)
 - local vault path strategy
 - initialize durable storage foundations
 - clients repository
