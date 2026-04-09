@@ -1,228 +1,132 @@
-<p align="center">
-  <h1 align="center">Equal Scales - AI Coworker Built By Attorneys for Attorneys</h1>
-</p>
+# Equal Scales
 
-<p align="center">
-  <a href="https://platform.composio.dev?utm_source=Github&utm_medium=Banner&utm_content=open-claude-cowork">
-    <img src="assets/open_claude_cowork_banner.png" width="800">
-  </a>
-</p>
+Equal Scales is a matter-centered legal co-working and legal assistant platform.
 
-<p align="center">
-  <a href="https://platform.composio.dev?utm_source=github&utm_medium=gif&utm_campaign=2101&utm_content=open-claude-cowork">
-    <img src="open-claude-cowork.gif" alt="Secure Clawdbot Demo" width="800">
-  </a>
-</p>
+It is being built by adapting the Open Claude Cowork application shell into a legal workspace where the assistant is the primary control surface for navigating work across:
+- clients
+- matters
+- templates
+- drafts
+- documents
+- research
+- review workflows
 
-<p align="center">
-  <a href="https://docs.composio.dev/tool-router/overview">
-    <img src="https://img.shields.io/badge/Composio-Tool%20Router-orange" alt="Composio">
-  </a>
-  <a href="https://platform.claude.com/docs/en/agent-sdk/overview">
-    <img src="https://img.shields.io/badge/Claude-Agent%20SDK-blue" alt="Claude Agent SDK">
-  </a>
-  <a href="https://github.com/anthropics/claude-code">
-    <img src="https://img.shields.io/badge/Powered%20by-Claude%20Code-purple" alt="Claude Code">
-  </a>
-  <a href="https://twitter.com/composio">
-    <img src="https://img.shields.io/twitter/follow/composio?style=social" alt="Twitter">
-  </a>
-</p>
+## What Equal Scales is
 
-<p align="center">
-  Equal Scales is an AI coworker built by attorneys for attorneys, powered by Claude Agent SDK and Composio Tool Router. Automate your legal work end-to-end across desktop and all your work apps in one place.
-  <br><br>
-  <a href="https://platform.composio.dev?utm_source=github&utm_medium=description&utm_campaign=2101&utm_content=open-claude-cowork">
-    <b>Get your free API key to get started →</b>
-  </a>
-</p>
+Equal Scales is not a generic AI chat wrapper and not a generic document editor.
+It is intended to become:
+- a local-first legal workspace
+- a matter-scoped drafting and review environment
+- an assistant-led application where chat can drive navigation and actions
+- a trustworthy system for legal work with inspectable architecture and durable records
 
-<p align="center">
-  <i>Pst. hey, you, join our stargazers :)</i>
-  <br>
-  <a href="https://github.com/ComposioHQ/open-claude-cowork">
-    <img src="https://img.shields.io/github/stars/ComposioHQ/open-claude-cowork.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
-  </a>
-</p>
+## Current product direction
 
----
+The current implementation direction is:
+1. preserve the chat-centered shell
+2. establish first-class legal workspace objects like clients, matters, templates, and drafts
+3. support template-first legal drafting workflows
+4. add a structured document workspace
+5. add collaboration and review capabilities
+6. evolve toward an agent-native legal workbench
 
-## What's Inside
+## Core product principles
 
-This repo includes two powerful AI tools:
+- Matter-centered by default
+  - retrieval, navigation, and document access should default to the active client/matter scope
+- Assistant as the primary control surface
+  - the user should be able to drive work from chat while the UI navigates and reshapes around the task
+- Local-first and inspectable
+  - important legal workflow data should be stored in durable, understandable forms inside the project architecture
+- Structured, reviewable AI actions
+  - the assistant should not make invisible edits through brittle DOM hacks
+- Permissive-license discipline
+  - core production document infrastructure should use MIT and other clearly permissive licenses unless explicitly approved otherwise
 
-| | **Equal Scales** | 🦑 **Secure Clawdbot** |
-|---|---|---|
-| **What** | Full-featured desktop chat interface | Personal AI assistant on messaging |
-| **Where** | macOS, Windows, Linux | WhatsApp, Telegram, Signal, iMessage |
-| **Best for** | Work automation, multi-chat sessions | On-the-go AI access, reminders, memory |
+## Current preferred document stack
 
-Both include **500+ app integrations** via Composio (Gmail, Slack, GitHub, Google Drive, and more).
+The current preferred stack for the document system is:
+- Electron app shell
+- React document workspace
+- Tiptap core + ProseMirror
+- Yjs + Hocuspocus
+- PostgreSQL
+- BullMQ
+- Mammoth for DOCX import later
+- pdf.js for PDF review later
 
----
+## Documentation
 
-## Quick Start
+Start with these files if you are working in the repo:
 
-### Equal Scales
+- `AGENTS.md`
+- `docs/README.md`
+- `docs/vision/equal-scales-master-product-vision.md`
+- `docs/roadmap/equal-scales-product-roadmap.md`
+- `docs/architecture/equal-scales-domain-model.md`
+- `docs/architecture/equal-scales-information-architecture.md`
+
+Important planning docs:
+- `docs/plans/2026-04-08-equal-scales-mempalace-architecture.md`
+- `docs/plans/2026-04-08-equal-scales-template-first-implementation-spec.md`
+- `docs/plans/2026-04-09-equal-scales-permissive-document-stack-implementation-guide.md`
+- `docs/plans/2026-04-09-equal-scales-document-stack-phase-1-2-execution-plan.md`
+
+## Current repository shape
+
+This repository currently contains the adapted Equal Scales shell and supporting backend services.
+
+Main areas:
+- `main.js` — Electron main process
+- `renderer/` — renderer-side UI
+- `server/` — backend services and storage code
+- `docs/` — architecture, roadmap, and implementation docs
+- `AGENTS.md` — coding-agent instructions and read order
+
+## Development status
+
+This project is in active architectural and implementation planning while the base shell is being adapted into the Equal Scales product.
+
+What is already true:
+- the app has been reoriented toward Equal Scales branding and direction
+- the docs now define the product vision, roadmap, domain model, information architecture, and document stack
+- implementation planning exists for both the template-first legal workspace and the early document stack
+
+What is still in progress:
+- moving from generic chat/session structures toward first-class legal workspace objects
+- building the structured document workspace
+- adding collaboration, review, and legal-specific document behavior
+
+## Local development
+
+Current app startup remains based on the existing Electron + backend workflow.
+
+Typical local run flow:
 
 ```bash
-git clone https://github.com/ComposioHQ/open-claude-cowork.git
-cd open-claude-cowork
-./setup.sh
-```
+# terminal 1
+cd server
+npm start
 
-Then run in two terminals:
-```bash
-# Terminal 1
-cd server && npm start
-
-# Terminal 2
+# terminal 2
 npm start
 ```
 
-### 🦑 Secure Clawdbot
+If additional setup is required, inspect:
+- `.env.example`
+- `package.json`
+- `server/package.json`
+- `setup.sh`
 
-```bash
-cd clawd
-npm install
-node cli.js
-```
+## Guidance for coding agents
 
-Select "Terminal chat" to test, or "Start gateway" to connect WhatsApp/Telegram/Signal/iMessage.
+If you are a coding agent:
+- do not assume the old Open Claude Cowork README represents the current product direction
+- use `AGENTS.md` and `docs/README.md` as the authoritative entry points
+- keep Equal Scales matter-centered, assistant-led, and licensing-disciplined
+- update the docs if you materially change architecture or sequencing
 
-See [Secure Clawdbot Documentation](./clawd/README.md) for full setup.
+## Status note
 
----
-
-## Features
-
-### Equal Scales
-- **Multi-Provider Support** - Claude Agent SDK or Opencode for different models
-- **Persistent Sessions** - Context maintained across messages
-- **Real-time Streaming** - Token-by-token response display
-- **Tool Visualization** - See tool inputs/outputs in the sidebar
-- **Skills Support** - Extend Claude with custom capabilities
-- **Modern UI** - Clean, dark-themed interface
-
-### 🦑 Secure Clawdbot
-- **Multi-Platform** - WhatsApp, Telegram, Signal, iMessage
-- **Persistent Memory** - Remembers facts, preferences, daily notes
-- **Browser Automation** - Navigate, click, fill forms, screenshot
-- **Scheduling** - Natural language reminders and cron jobs
-- **500+ Integrations** - Gmail, Slack, GitHub, Calendar via Composio
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Desktop | Electron.js |
-| Backend | Node.js + Express |
-| AI | Claude Agent SDK + Opencode SDK |
-| Tools | Composio Tool Router + MCP |
-| Streaming | Server-Sent Events (SSE) |
-
----
-
-## Configuration
-
-### API Keys
-
-You need:
-- **Anthropic API key** from [console.anthropic.com](https://console.anthropic.com)
-- **Composio API key** from [app.composio.dev](https://app.composio.dev)
-- **Opencode API key** (optional) from [opencode.dev](https://opencode.dev)
-
-```bash
-cp .env.example .env
-# Edit .env with your keys
-```
-
-### Skills
-
-Extend Claude with custom skills by adding `SKILL.md` files to `.claude/skills/`:
-
-```markdown
----
-description: Use this skill when the user asks about [topic]
----
-
-# My Skill
-
-Instructions for Claude...
-```
-
-See [Agent Skills documentation](https://platform.claude.com/docs/en/agent-sdk/skills) for details.
-
----
-
-## Project Structure
-
-```
-equal-scales/
-├── main.js              # Electron main process
-├── renderer/            # Frontend UI
-├── server/              # Backend + providers
-│   ├── providers/       # Claude & Opencode implementations
-│   └── server.js        # Express server
-├── clawd/               # Secure Clawdbot (messaging bot)
-│   ├── cli.js           # Entry point
-│   ├── adapters/        # WhatsApp, Telegram, Signal, iMessage
-│   └── README.md        # Full documentation
-└── .claude/skills/      # Custom agent skills
-```
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Can't connect to backend | Ensure server is running on port 3001 |
-| API key error | Check `.env` - Anthropic keys start with `sk-ant-` |
-| Session not persisting | Check server logs for session ID |
-| Streaming slow | Check firewall/network for SSE connections |
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## Resources
-
-- [Claude Agent SDK](https://docs.anthropic.com/en/docs/claude-agent-sdk)
-- [Composio Tool Router](https://docs.composio.dev/tool-router)
-- [Composio Dashboard](https://app.composio.dev)
-- [Electron Docs](https://www.electronjs.org/docs)
-
----
-
-## Community
-
-- [Discord](https://discord.com/invite/composio) - Chat with developers
-- [Twitter/X](https://x.com/composio) - Updates and features
-- [support@composio.dev](mailto:support@composio.dev) - Questions
-
----
-
-<p align="center">
-  <b>Join 200,000+ developers building agents in production</b>
-</p>
-
-<p align="center">
-  <a href="https://platform.composio.dev/?utm_source=github&utm_medium=community&utm_campaign=2101&utm_content=open claude cowork">
-    <img src="https://img.shields.io/badge/Get_Started_For_Free-4F46E5?style=for-the-badge" alt="Get Started For Free"/>
-  </a>
-</p>
-
-<p align="center">
-  Equal Scales - Built with Claude Code and Composio
-</p>
+This README is the project-level overview.
+The canonical detailed guidance lives in `docs/`.

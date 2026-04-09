@@ -47,6 +47,12 @@ let browserDisplayMode = 'hidden'; // 'inline' | 'sidebar' | 'hidden'
 let allChats = [];
 let currentChatId = null;
 
+// Workspace state (Phase 2)
+let allClients = [];
+let currentClientId = null;
+let currentMatterId = null;
+let expandedClients = new Set(); // track which clients are expanded in sidebar
+
 // Model configurations per provider
 const providerModels = {
   claude: [
@@ -104,6 +110,8 @@ function init() {
   setupEventListeners();
   loadAllChats();
   renderChatHistory();
+  loadClients(); // Phase 2: load workspace nav
+  loadTemplates(); // Phase 3: load template library
   homeInput.focus();
 }
 
@@ -345,6 +353,877 @@ function renderChatHistory() {
   });
 }
 
+// ==================== WORKSPACE NAVIGATION (Phase 2) ====================
+
+/**
+ * Load clients from backend and render the workspace nav.
+ */
+async function loadClients() {
+  try {
+    allClients = await window.electronAPI.listClients();
+    renderWorkspaceNav();
+  } catch (err) {
+    console.error('[Workspace] Failed to load clients:', err);
+    allClients = [];
+    renderWorkspaceNav();
+  }
+}
+
+/**
+ * Render the clients/matters sidebar navigator.
+ */
+function renderWorkspaceNav() {
+  const nav = document.getElementById('workspaceNav');
+  if (!nav) return;
+
+  nav.innerHTML = '';
+
+  if (allClients.length === 0) {
+    nav.innerHTML = '<div class="workspace-empty">No clients yet</div>';
+    return;
+  }
+
+  allClients.forEach(client => {
+    const clientDiv = document.createElement('div');
+    clientDiv.className = 'client-item' + (expandedClients.has(client.id) ? ' expanded' : '');
+    clientDiv.dataset.clientId = client.id;
+
+    const header = document.createElement('div');
+    header.className = 'client-item-header' + (currentClientId === client.id && !currentMatterId ? ' active' : '');
+    header.innerHTML = `
+      <svg class="expand-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+      <svg class="client-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span class="client-name">${escapeHtml(client.display_name || client.name)}</span>
+      <button class="client-add-matter-btn" title="Add matter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+    `;
+
+    // Click header to select client scope and expand/collapse
+    header.onclick = (e) => {
+      if (e.target.closest('.client-add-matter-btn')) {
+        e.stopPropagation();
+        createMatterFlow(client.id);
+        return;
+      }
+      // Set client as active workspace scope, clear matter scope
+      currentClientId = client.id;
+      currentMatterId = null;
+
+      if (expandedClients.has(client.id)) {
+        expandedClients.delete(client.id);
+      } else {
+        expandedClients.add(client.id);
+        loadMattersForClient(client.id);
+      }
+      renderWorkspaceNav();
+      loadDrafts(); // refresh drafts for client scope
+    };
+
+    clientDiv.appendChild(header);
+
+    // Matter list (shown when expanded)
+    const matterList = document.createElement('div');
+    matterList.className = 'matter-list';
+    matterList.id = `matters-${client.id}`;
+
+    // If expanded and we have cached matters, render them
+    if (client._matters && client._matters.length > 0) {
+      client._matters.forEach(matter => {
+        const matterItem = document.createElement('div');
+        matterItem.className = 'matter-item' + (currentMatterId === matter.id ? ' active' : '');
+        matterItem.innerHTML = `
+          <svg class="matter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          <span class="matter-name">${escapeHtml(matter.name)}</span>
+          ${matter.matter_type ? `<span class="matter-type-badge">${escapeHtml(matter.matter_type)}</span>` : ''}
+        `;
+        matterItem.onclick = () => selectMatter(client, matter);
+        matterList.appendChild(matterItem);
+      });
+    } else if (expandedClients.has(client.id)) {
+      matterList.innerHTML = '<div class="workspace-empty">No matters</div>';
+    }
+
+    clientDiv.appendChild(matterList);
+    nav.appendChild(clientDiv);
+  });
+}
+
+/**
+ * Load matters for a client and cache them on the client object.
+ */
+async function loadMattersForClient(clientId) {
+  try {
+    const matters = await window.electronAPI.listMatters(clientId);
+    const client = allClients.find(c => c.id === clientId);
+    if (client) {
+      client._matters = matters;
+      renderWorkspaceNav();
+    }
+  } catch (err) {
+    console.error('[Workspace] Failed to load matters for', clientId, err);
+  }
+}
+
+/**
+ * Select a matter as the current workspace context.
+ * For now, this just sets state and updates the UI highlight.
+ * Chat-to-matter linking will come in a later phase.
+ */
+function selectMatter(client, matter) {
+  currentClientId = client.id;
+  currentMatterId = matter.id;
+  expandedClients.add(client.id);
+  renderWorkspaceNav();
+  loadDrafts(); // refresh drafts for new scope
+  console.log('[Workspace] Selected matter:', matter.name, 'for client:', client.name);
+}
+
+/**
+ * Prompt user to create a new client, then refresh nav.
+ */
+async function createClientFlow() {
+  // Show inline input form in the workspace nav
+  const nav = document.getElementById('workspaceNav');
+  if (!nav || nav.querySelector('.inline-create-form')) return; // prevent double forms
+
+  const form = document.createElement('div');
+  form.className = 'inline-create-form';
+  form.innerHTML = `
+    <input type="text" class="inline-create-input" placeholder="Client name..." autofocus />
+    <div class="inline-create-actions">
+      <button class="inline-create-submit" title="Create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </button>
+      <button class="inline-create-cancel" title="Cancel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  `;
+  nav.prepend(form);
+
+  const input = form.querySelector('input');
+  input.focus();
+
+  const submitClient = async () => {
+    const name = input.value.trim();
+    if (!name) { form.remove(); return; }
+    try {
+      const client = await window.electronAPI.createClient(name);
+      console.log('[Workspace] Created client:', client.name);
+      expandedClients.add(client.id);
+      await loadClients();
+    } catch (err) {
+      console.error('[Workspace] Failed to create client:', err);
+    }
+    form.remove();
+  };
+
+  form.querySelector('.inline-create-submit').onclick = submitClient;
+  form.querySelector('.inline-create-cancel').onclick = () => form.remove();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitClient();
+    if (e.key === 'Escape') form.remove();
+  });
+}
+
+/**
+ * Show inline form to create a new matter under a client.
+ */
+async function createMatterFlow(clientId) {
+  const matterList = document.getElementById(`matters-${clientId}`);
+  if (!matterList || matterList.querySelector('.inline-create-form')) return;
+
+  const form = document.createElement('div');
+  form.className = 'inline-create-form';
+  form.innerHTML = `
+    <input type="text" class="inline-create-input" placeholder="Matter name..." autofocus />
+    <select class="inline-create-select">
+      <option value="">Type...</option>
+      <option value="estate">Estate</option>
+      <option value="litigation">Litigation</option>
+      <option value="contracts">Contracts</option>
+      <option value="intake">Intake</option>
+      <option value="general">General</option>
+    </select>
+    <div class="inline-create-actions">
+      <button class="inline-create-submit" title="Create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </button>
+      <button class="inline-create-cancel" title="Cancel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  `;
+  matterList.prepend(form);
+
+  const input = form.querySelector('input');
+  const select = form.querySelector('select');
+  input.focus();
+
+  const submitMatter = async () => {
+    const name = input.value.trim();
+    if (!name) { form.remove(); return; }
+    const matterType = select.value || null;
+    try {
+      await window.electronAPI.createMatter(clientId, name, matterType);
+      console.log('[Workspace] Created matter:', name);
+      expandedClients.add(clientId);
+      await loadMattersForClient(clientId);
+    } catch (err) {
+      console.error('[Workspace] Failed to create matter:', err);
+    }
+    form.remove();
+  };
+
+  form.querySelector('.inline-create-submit').onclick = submitMatter;
+  form.querySelector('.inline-create-cancel').onclick = () => form.remove();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitMatter();
+    if (e.key === 'Escape') form.remove();
+  });
+}
+
+// ==================== TEMPLATE LIBRARY (Phase 3) ====================
+
+let allTemplates = [];
+
+/**
+ * Load templates from backend and render the template list.
+ */
+async function loadTemplates() {
+  try {
+    allTemplates = await window.electronAPI.listTemplates();
+    renderTemplateList();
+  } catch (err) {
+    console.error('[Templates] Failed to load templates:', err);
+    allTemplates = [];
+    renderTemplateList();
+  }
+}
+
+/**
+ * Render the templates sidebar list, grouped by type.
+ */
+function renderTemplateList() {
+  const list = document.getElementById('templatesList');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (allTemplates.length === 0) {
+    list.innerHTML = '<div class="workspace-empty">No templates</div>';
+    return;
+  }
+
+  // Group templates by type
+  const grouped = {};
+  allTemplates.forEach(t => {
+    const type = t.template_type || 'other';
+    if (!grouped[type]) grouped[type] = [];
+    grouped[type].push(t);
+  });
+
+  // Render each group
+  for (const [type, templates] of Object.entries(grouped)) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'template-group';
+
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'template-group-label';
+    groupLabel.textContent = type.replace(/-/g, ' ');
+    groupDiv.appendChild(groupLabel);
+
+    templates.forEach(tmpl => {
+      const item = document.createElement('div');
+      item.className = 'template-item';
+      item.innerHTML = `
+        <svg class="template-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <div class="template-info">
+          <span class="template-name">${escapeHtml(tmpl.name)}</span>
+          ${tmpl.description ? `<span class="template-desc">${escapeHtml(tmpl.description)}</span>` : ''}
+        </div>
+      `;
+      item.title = tmpl.description || tmpl.name;
+      item.onclick = () => previewTemplate(tmpl);
+      groupDiv.appendChild(item);
+    });
+
+    list.appendChild(groupDiv);
+  }
+}
+
+/**
+ * Handle template click — if a client is selected, show a draft generation
+ * confirmation panel. Otherwise, notify the user to select a client first.
+ */
+async function previewTemplate(tmpl) {
+  if (!currentClientId) {
+    // Show a brief notification in the home view area
+    showToast('Select a client first, then click a template to generate a draft.');
+    return;
+  }
+
+  const client = allClients.find(c => c.id === currentClientId);
+  const clientName = client ? (client.display_name || client.name) : currentClientId;
+  const matterName = currentMatterId
+    ? (client?._matters?.find(m => m.id === currentMatterId)?.name || currentMatterId)
+    : 'Client-level (no matter selected)';
+
+  // Show inline confirmation in the main content area
+  showDraftConfirmation(tmpl, clientName, matterName);
+}
+
+/**
+ * Show an inline draft generation confirmation panel.
+ */
+function showDraftConfirmation(tmpl, clientName, matterName) {
+  // Remove any existing confirmation
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>Generate Draft</h3>
+      <div class="draft-confirm-details">
+        <div class="draft-confirm-row"><span class="draft-confirm-label">Template:</span> <span>${escapeHtml(tmpl.name)}</span></div>
+        <div class="draft-confirm-row"><span class="draft-confirm-label">Client:</span> <span>${escapeHtml(clientName)}</span></div>
+        <div class="draft-confirm-row"><span class="draft-confirm-label">Matter:</span> <span>${escapeHtml(matterName)}</span></div>
+      </div>
+      <textarea class="draft-confirm-instructions" placeholder="Additional instructions for the agent (optional)..." rows="3"></textarea>
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate">Generate Draft</button>
+      </div>
+    </div>
+  `;
+
+  document.querySelector('.main-content').appendChild(overlay);
+
+  const textarea = overlay.querySelector('textarea');
+  textarea.focus();
+
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+  overlay.querySelector('.draft-confirm-generate').onclick = () => {
+    const instructions = textarea.value.trim();
+    overlay.remove();
+    generateDraftFromTemplate(tmpl.id, instructions);
+  };
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') overlay.remove();
+  });
+}
+
+/**
+ * Show a brief toast notification.
+ */
+function showToast(message) {
+  const existing = document.querySelector('.toast-notification');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('visible'), 10);
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+/**
+ * Generate a draft: get the drafting prompt from the backend, send it through
+ * the chat pipeline, then save the agent's response as a draft file.
+ */
+async function generateDraftFromTemplate(templateId, instructions = '') {
+  try {
+    // Step 1: Get the assembled drafting prompt from the backend
+    const { prompt: draftPrompt, templateName, clientName, matterName } =
+      await window.electronAPI.generateDraftPrompt(templateId, currentClientId, currentMatterId, instructions);
+
+    // Step 2: Always start a fresh chat session for template drafting
+    // (avoids inheriting unrelated conversation history from prior sessions)
+    if (currentChatId && chatMessages.children.length > 0) {
+      saveState(); // save any current chat first
+    }
+    currentChatId = generateId();
+    chatMessages.innerHTML = '';
+    todos = [];
+    toolCalls = [];
+    stepsList.innerHTML = '';
+    emptySteps.style.display = 'block';
+    stepsCount.textContent = '0 steps';
+    toolCallsList.innerHTML = '';
+    emptyTools.style.display = 'block';
+    switchToChatView();
+    isFirstMessage = false;
+    chatTitle.textContent = `Draft: ${templateName}`;
+
+    // Show a user message indicating what's being generated
+    const displayMsg = `Generate "${templateName}" for ${clientName}` +
+      (matterName ? ` / ${matterName}` : '') +
+      (instructions ? `\n\nInstructions: ${instructions}` : '');
+    addUserMessage(displayMsg);
+
+    // Step 3: Send through the existing chat/SSE pipeline
+    isWaitingForResponse = true;
+    updateSendButton(homeInput, homeSendBtn);
+    updateSendButton(messageInput, chatSendBtn);
+
+    const assistantMessage = createAssistantMessage();
+    const contentDiv = assistantMessage.querySelector('.message-content');
+
+    let fullResponse = '';
+    let heartbeatChecker = null;
+
+    const response = await window.electronAPI.sendMessage(draftPrompt, currentChatId, selectedProvider, selectedModel);
+    const reader = await response.getReader();
+    let buffer = '';
+    let hasContent = false;
+    let lastHeartbeat = Date.now();
+
+    heartbeatChecker = setInterval(() => {
+      if (Date.now() - lastHeartbeat > 300000) {
+        console.warn('[Draft] No data for 5 minutes');
+      }
+    }, 30000);
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          clearInterval(heartbeatChecker);
+          const loadingIndicator = contentDiv.querySelector('.loading-indicator');
+          if (loadingIndicator && hasContent) loadingIndicator.remove();
+          const actionsDiv = assistantMessage.querySelector('.message-actions');
+          if (actionsDiv) actionsDiv.classList.remove('hidden');
+          break;
+        }
+
+        lastHeartbeat = Date.now();
+        buffer += value;
+        const lines = buffer.split('\n');
+        buffer = lines[lines.length - 1];
+
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const chunk = JSON.parse(jsonStr);
+            if (chunk.type === 'text' && chunk.content) {
+              fullResponse += chunk.content;
+              hasContent = true;
+              const loadingIndicator = contentDiv.querySelector('.loading-indicator');
+              if (loadingIndicator) loadingIndicator.remove();
+              renderMarkdownContent(contentDiv, fullResponse);
+              scrollToBottom();
+            }
+          } catch (e) { /* skip non-JSON lines */ }
+        }
+      }
+    } catch (streamErr) {
+      console.error('[Draft] Stream error:', streamErr);
+      clearInterval(heartbeatChecker);
+    }
+
+    // Step 4: Save the generated content as a draft
+    if (fullResponse.trim()) {
+      try {
+        const draft = await window.electronAPI.saveDraft(
+          fullResponse.trim(),
+          currentClientId,
+          { templateId, matterId: currentMatterId, title: templateName }
+        );
+        console.log('[Draft] Saved:', draft.id, draft.title, 'v' + draft.version);
+
+        // Show save confirmation in chat
+        const saveNote = document.createElement('div');
+        saveNote.style.cssText = 'margin-top: 12px; padding: 8px 12px; background: var(--tool-output-bg); color: var(--tool-output-text); border-radius: 6px; font-size: 13px; border-left: 3px solid var(--tool-output-border);';
+        saveNote.textContent = `Draft saved: ${draft.title} v${draft.version} → ${draft.file_path}`;
+        contentDiv.appendChild(saveNote);
+        scrollToBottom();
+      } catch (saveErr) {
+        console.error('[Draft] Save error:', saveErr);
+        const errNote = document.createElement('div');
+        errNote.style.cssText = 'margin-top: 12px; padding: 8px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 6px; font-size: 13px;';
+        errNote.textContent = `Failed to save draft: ${saveErr.message}`;
+        contentDiv.appendChild(errNote);
+      }
+    }
+
+    isWaitingForResponse = false;
+    updateSendButton(homeInput, homeSendBtn);
+    updateSendButton(messageInput, chatSendBtn);
+    saveState();
+
+  } catch (err) {
+    console.error('[Draft] Generation error:', err);
+    alert('Failed to generate draft: ' + err.message);
+    isWaitingForResponse = false;
+    updateSendButton(homeInput, homeSendBtn);
+    updateSendButton(messageInput, chatSendBtn);
+  }
+}
+
+/**
+ * Render markdown content into a div (reused for draft streaming).
+ */
+function renderMarkdownContent(div, markdown) {
+  if (typeof marked !== 'undefined' && marked.parse) {
+    div.innerHTML = marked.parse(markdown);
+    div.dataset.rawContent = markdown;
+  } else {
+    div.textContent = markdown;
+  }
+}
+
+// ==================== DRAFT MANAGEMENT (Phase 5) ====================
+
+let allDrafts = [];
+let currentDraft = null; // full draft object with content
+let draftSourceMode = false;
+
+/**
+ * Load drafts for the current client from backend.
+ */
+async function loadDrafts() {
+  const list = document.getElementById('draftsList');
+  if (!currentClientId) {
+    if (list) list.innerHTML = '<div class="workspace-empty">Select a client</div>';
+    allDrafts = [];
+    return;
+  }
+
+  try {
+    allDrafts = await window.electronAPI.listDrafts(currentClientId, currentMatterId);
+    renderDraftList();
+  } catch (err) {
+    console.error('[Drafts] Failed to load:', err);
+    allDrafts = [];
+    renderDraftList();
+  }
+}
+
+/**
+ * Render the drafts sidebar list.
+ */
+function renderDraftList() {
+  const list = document.getElementById('draftsList');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (allDrafts.length === 0) {
+    list.innerHTML = '<div class="workspace-empty">No drafts yet</div>';
+    return;
+  }
+
+  allDrafts.forEach(draft => {
+    const item = document.createElement('div');
+    item.className = 'draft-item' + (currentDraft && currentDraft.id === draft.id ? ' active' : '');
+    item.innerHTML = `
+      <svg class="draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+      </svg>
+      <div class="draft-info">
+        <span class="draft-name">${escapeHtml(draft.title)}</span>
+        <span class="draft-meta">${draft.created_at?.split(' ')[0] || ''}</span>
+      </div>
+      <span class="draft-version-badge">v${draft.version}</span>
+      <span class="draft-status-badge status-${draft.status}">${draft.status}</span>
+    `;
+    item.onclick = () => openDraftPreview(draft.id);
+    list.appendChild(item);
+  });
+}
+
+/**
+ * Open a draft in the preview view.
+ */
+async function openDraftPreview(draftId) {
+  try {
+    const draft = await window.electronAPI.getDraft(draftId);
+    if (!draft) {
+      alert('Draft not found');
+      return;
+    }
+
+    currentDraft = draft;
+    draftSourceMode = false;
+
+    // Update preview header
+    document.getElementById('draftPreviewTitle').textContent = draft.title;
+    document.getElementById('draftPreviewMeta').textContent =
+      `v${draft.version} · ${draft.status}${draft.draft_type ? ' · ' + draft.draft_type : ''}`;
+
+    // Render content
+    const contentDiv = document.getElementById('draftPreviewContent');
+    contentDiv.classList.remove('source-mode');
+    if (draft.content) {
+      renderMarkdownContent(contentDiv, draft.content);
+    } else {
+      contentDiv.innerHTML = '<p style="color: var(--text-tertiary);">Draft file not found on disk.</p>';
+    }
+
+    // Switch to preview view
+    switchToDraftPreview();
+    renderDraftList(); // update active state
+  } catch (err) {
+    console.error('[Drafts] Failed to open:', err);
+    alert('Failed to open draft: ' + err.message);
+  }
+}
+
+/**
+ * Toggle between rendered preview and raw markdown source.
+ */
+function toggleDraftSource() {
+  if (!currentDraft || !currentDraft.content) return;
+
+  draftSourceMode = !draftSourceMode;
+  const contentDiv = document.getElementById('draftPreviewContent');
+  const toggleBtn = document.getElementById('draftSourceToggle');
+
+  if (draftSourceMode) {
+    contentDiv.classList.add('source-mode');
+    contentDiv.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.textContent = currentDraft.content;
+    contentDiv.appendChild(pre);
+    toggleBtn.classList.add('active');
+  } else {
+    contentDiv.classList.remove('source-mode');
+    renderMarkdownContent(contentDiv, currentDraft.content);
+    toggleBtn.classList.remove('active');
+  }
+}
+
+/**
+ * Revise the current draft — sends it back through the agent to create a new version.
+ */
+async function reviseDraft() {
+  if (!currentDraft) return;
+
+  // Show inline revision input overlay
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'draft-confirm-overlay';
+    overlay.innerHTML = `
+      <div class="draft-confirm-panel">
+        <h3>Revise: ${escapeHtml(currentDraft.title)} v${currentDraft.version}</h3>
+        <textarea class="draft-confirm-instructions" placeholder="What should be changed?..." rows="4" autofocus></textarea>
+        <div class="draft-confirm-actions">
+          <button class="draft-confirm-cancel">Cancel</button>
+          <button class="draft-confirm-generate">Revise Draft</button>
+        </div>
+      </div>
+    `;
+    document.querySelector('.main-content').appendChild(overlay);
+    const textarea = overlay.querySelector('textarea');
+    textarea.focus();
+
+    const cancel = () => { overlay.remove(); resolve(); };
+    const submit = () => {
+      const instructions = textarea.value.trim();
+      overlay.remove();
+      if (!instructions) { resolve(); return; }
+      executeRevision(instructions).then(resolve);
+    };
+
+    overlay.querySelector('.draft-confirm-cancel').onclick = cancel;
+    overlay.querySelector('.draft-confirm-generate').onclick = submit;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cancel(); });
+    textarea.addEventListener('keydown', (e) => { if (e.key === 'Escape') cancel(); });
+  });
+}
+
+async function executeRevision(instructions) {
+  const revisePrompt = `You are revising an Equal Scales legal draft.
+
+## Current Draft
+
+Title: ${currentDraft.title}
+Version: ${currentDraft.version}
+Status: ${currentDraft.status}
+
+## Current Content
+
+\`\`\`
+${currentDraft.content}
+\`\`\`
+
+## Revision Instructions
+
+${instructions.trim()}
+
+## Rules
+
+1. Apply the requested revisions to the draft.
+2. Preserve the overall structure and formatting.
+3. Do not change sections that are not affected by the revision instructions.
+4. If the revision creates legal uncertainty, mark it as **[REVIEW REQUIRED]**.
+5. Keep the output professional and ready for attorney review.
+
+## Output
+
+Return ONLY the revised draft content. Do not include explanations or code fences.`;
+
+  // Save current preview state, switch to chat for the revision
+  if (currentChatId && chatMessages.children.length > 0) {
+    saveState();
+  }
+  currentChatId = generateId();
+  chatMessages.innerHTML = '';
+  todos = [];
+  toolCalls = [];
+  stepsList.innerHTML = '';
+  emptySteps.style.display = 'block';
+  stepsCount.textContent = '0 steps';
+  toolCallsList.innerHTML = '';
+  emptyTools.style.display = 'block';
+  switchToChatView();
+  isFirstMessage = false;
+  chatTitle.textContent = `Revise: ${currentDraft.title} v${currentDraft.version}`;
+
+  addUserMessage(`Revise "${currentDraft.title}" v${currentDraft.version}\n\nInstructions: ${instructions.trim()}`);
+
+  isWaitingForResponse = true;
+  updateSendButton(homeInput, homeSendBtn);
+  updateSendButton(messageInput, chatSendBtn);
+
+  const assistantMessage = createAssistantMessage();
+  const contentDiv = assistantMessage.querySelector('.message-content');
+  let fullResponse = '';
+
+  try {
+    const response = await window.electronAPI.sendMessage(revisePrompt, currentChatId, selectedProvider, selectedModel);
+    const reader = await response.getReader();
+    let buffer = '';
+    let hasContent = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        const loading = contentDiv.querySelector('.loading-indicator');
+        if (loading && hasContent) loading.remove();
+        const actions = assistantMessage.querySelector('.message-actions');
+        if (actions) actions.classList.remove('hidden');
+        break;
+      }
+
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines[lines.length - 1];
+
+      for (let i = 0; i < lines.length - 1; i++) {
+        if (!lines[i].startsWith('data: ')) continue;
+        const jsonStr = lines[i].slice(6).trim();
+        if (!jsonStr) continue;
+        try {
+          const chunk = JSON.parse(jsonStr);
+          if (chunk.type === 'text' && chunk.content) {
+            fullResponse += chunk.content;
+            hasContent = true;
+            const loading = contentDiv.querySelector('.loading-indicator');
+            if (loading) loading.remove();
+            renderMarkdownContent(contentDiv, fullResponse);
+            scrollToBottom();
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    // Save as new version
+    if (fullResponse.trim()) {
+      try {
+        const newDraft = await window.electronAPI.saveDraft(
+          fullResponse.trim(),
+          currentDraft.client_id,
+          {
+            templateId: currentDraft.template_id,
+            matterId: currentDraft.matter_id,
+            title: currentDraft.title
+          }
+        );
+
+        const saveNote = document.createElement('div');
+        saveNote.style.cssText = 'margin-top: 12px; padding: 8px 12px; background: var(--tool-output-bg); color: var(--tool-output-text); border-radius: 6px; font-size: 13px; border-left: 3px solid var(--tool-output-border);';
+        saveNote.textContent = `Revised draft saved: ${newDraft.title} v${newDraft.version} → ${newDraft.file_path}`;
+        contentDiv.appendChild(saveNote);
+        scrollToBottom();
+
+        // Refresh drafts list
+        await loadDrafts();
+      } catch (saveErr) {
+        console.error('[Drafts] Save revision error:', saveErr);
+      }
+    }
+  } catch (err) {
+    console.error('[Drafts] Revision error:', err);
+  }
+
+  isWaitingForResponse = false;
+  updateSendButton(homeInput, homeSendBtn);
+  updateSendButton(messageInput, chatSendBtn);
+  saveState();
+}
+
+/**
+ * Switch to draft preview view (hide home + chat views).
+ */
+function switchToDraftPreview() {
+  document.getElementById('homeView').classList.add('hidden');
+  document.getElementById('chatView').classList.add('hidden');
+  document.getElementById('draftPreviewView').classList.remove('hidden');
+}
+
+/**
+ * Leave draft preview and return to home view.
+ */
+function closeDraftPreview() {
+  document.getElementById('draftPreviewView').classList.add('hidden');
+  currentDraft = null;
+  renderDraftList();
+  // Go back to home or last chat
+  if (currentChatId) {
+    const chat = allChats.find(c => c.id === currentChatId);
+    if (chat) {
+      document.getElementById('chatView').classList.remove('hidden');
+      return;
+    }
+  }
+  document.getElementById('homeView').classList.remove('hidden');
+}
+
 // Switch to a different chat
 function switchToChat(chatId) {
   // Abort any ongoing request when switching chats
@@ -416,6 +1295,48 @@ function setupEventListeners() {
   // Theme toggle
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+
+  // Add client button
+  const addClientBtn = document.getElementById('addClientBtn');
+  if (addClientBtn) addClientBtn.addEventListener('click', createClientFlow);
+
+  // Collapsible sidebar sections
+  document.querySelectorAll('.workspace-section-header[data-section]').forEach(header => {
+    header.style.cursor = 'pointer';
+    header.addEventListener('click', (e) => {
+      // Don't collapse if clicking the + button
+      if (e.target.closest('.workspace-add-btn')) return;
+      const sectionId = header.dataset.section;
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.classList.toggle('collapsed');
+        // Persist state
+        const collapsed = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+        if (section.classList.contains('collapsed')) {
+          if (!collapsed.includes(sectionId)) collapsed.push(sectionId);
+        } else {
+          const idx = collapsed.indexOf(sectionId);
+          if (idx > -1) collapsed.splice(idx, 1);
+        }
+        localStorage.setItem('collapsedSections', JSON.stringify(collapsed));
+      }
+    });
+  });
+
+  // Restore collapsed section state from localStorage
+  const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+  collapsedSections.forEach(sectionId => {
+    const section = document.getElementById(sectionId);
+    if (section) section.classList.add('collapsed');
+  });
+
+  // Draft preview controls
+  const draftBackBtn = document.getElementById('draftBackBtn');
+  if (draftBackBtn) draftBackBtn.addEventListener('click', closeDraftPreview);
+  const draftSourceToggle = document.getElementById('draftSourceToggle');
+  if (draftSourceToggle) draftSourceToggle.addEventListener('click', toggleDraftSource);
+  const draftReviseBtn = document.getElementById('draftReviseBtn');
+  if (draftReviseBtn) draftReviseBtn.addEventListener('click', reviseDraft);
 
   // Right sidebar toggle
   sidebarToggle.addEventListener('click', toggleSidebar);
@@ -826,6 +1747,7 @@ function resetTextareaHeight(textarea) {
 function switchToChatView() {
   homeView.classList.add('hidden');
   chatView.classList.remove('hidden');
+  document.getElementById('draftPreviewView').classList.add('hidden');
   messageInput.focus();
 }
 
@@ -909,7 +1831,7 @@ async function handleSendMessage(e) {
   try {
     console.log('[Chat] Sending message to API...');
     // Pass chatId, provider, and model for session management
-    const response = await window.electronAPI.sendMessage(prompt, currentChatId, selectedProvider, selectedModel);
+    const response = await window.electronAPI.sendMessage(prompt, currentChatId, selectedProvider, selectedModel, currentClientId, currentMatterId);
     console.log('[Chat] Response received');
 
     const reader = await response.getReader();
@@ -1263,6 +2185,7 @@ window.startNewChat = function() {
   // Switch back to home view
   homeView.classList.remove('hidden');
   chatView.classList.add('hidden');
+  document.getElementById('draftPreviewView').classList.add('hidden');
   homeInput.focus();
 
   // Clear currentChatId from localStorage

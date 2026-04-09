@@ -6,6 +6,13 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { Composio } from '@composio/core';
 import { getProvider, getAvailableProviders, initializeProviders } from './providers/index.js';
+import { initDatabase, closeDatabase } from './storage/db.js';
+import clientRoutes from './routes/clients.js';
+import matterRoutes from './routes/matters.js';
+import templateRoutes from './routes/templates.js';
+import draftRoutes from './routes/drafts.js';
+import { seedDefaultTemplates, syncTemplates } from './services/template-service.js';
+import { gatherContext, formatContextForPrompt } from './services/context-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,11 +76,15 @@ app.post('/api/chat', async (req, res) => {
     message,
     chatId,
     userId = 'default-user',
-    provider: providerName = 'claude',  // Per-request provider selection
-    model = null  // Per-request model selection
+    provider: providerName = 'claude',
+    model = null,
+    clientId = null,
+    matterId = null
   } = req.body;
 
   console.log('[CHAT] Request received:', message);
+  if (clientId) console.log('[CHAT] Client scope:', clientId);
+  if (matterId) console.log('[CHAT] Matter scope:', matterId);
   console.log('[CHAT] Chat ID:', chatId);
   console.log('[CHAT] Provider:', providerName);
   console.log('[CHAT] Model:', model || '(default)');
@@ -138,10 +149,35 @@ app.post('/api/chat', async (req, res) => {
     console.log('[CHAT] Using provider:', provider.name);
     console.log('[CHAT] All stored sessions:', Array.from(provider.sessions.entries()));
 
+    // Build scoped prompt: prepend client/matter context if available
+    let scopedMessage = message;
+    if (clientId) {
+      try {
+        const context = gatherContext({ clientId, matterId });
+        const contextText = formatContextForPrompt(context);
+        const scopeLabel = matterId ? 'matter' : 'client';
+        const matterName = context.matter ? context.matter.name : 'None';
+        scopedMessage = `[Equal Scales Workspace Context]
+You are working within an Equal Scales workspace.
+- Client: ${context.client.display_name || context.client.name}
+- Matter: ${matterName}
+- Scope: ${scopeLabel}
+
+${contextText}
+
+[End Workspace Context]
+
+${message}`;
+        console.log('[CHAT] Workspace context prepended for:', context.client.name);
+      } catch (ctxErr) {
+        console.warn('[CHAT] Could not load workspace context:', ctxErr.message);
+      }
+    }
+
     // Stream responses from the provider
     try {
       for await (const chunk of provider.query({
-        prompt: message,
+        prompt: scopedMessage,
         chatId,
         userId,
         mcpServers,
@@ -214,6 +250,12 @@ app.get('/api/providers', (_req, res) => {
   });
 });
 
+// Client and matter workspace routes
+app.use('/api/clients', clientRoutes);
+app.use('/api/matters', matterRoutes);
+app.use('/api/templates', templateRoutes);
+app.use('/api/drafts', draftRoutes);
+
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -222,6 +264,17 @@ app.get('/api/health', (_req, res) => {
     providers: getAvailableProviders()
   });
 });
+
+// Initialize Equal Scales local storage (vault + SQLite)
+try {
+  initDatabase();
+  seedDefaultTemplates();
+  syncTemplates();
+  console.log('✓ Equal Scales vault and database initialized');
+} catch (err) {
+  console.error('[DB] Failed to initialize database:', err.message);
+  console.error('[DB] The app will run but local storage features will not work.');
+}
 
 await initializeProviders();
 await initializeComposioSession();
@@ -243,6 +296,7 @@ server.on('error', (err) => {
 // Prevent the process from exiting
 process.on('SIGINT', () => {
   console.log('\nShutting down server...');
+  closeDatabase();
   server.close(() => {
     console.log('Server closed');
     process.exit(0);

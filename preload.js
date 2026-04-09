@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Send a chat message to the backend with chat ID, provider, and model
-  sendMessage: async (message, chatId, provider = 'claude', model = null) => {
+  sendMessage: async (message, chatId, provider = 'claude', model = null, clientId = null, matterId = null) => {
     // Abort any previous request
     if (currentAbortController) {
       currentAbortController.abort();
@@ -58,7 +58,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message, chatId, provider, model }),
+        body: JSON.stringify({ message, chatId, provider, model, clientId, matterId }),
         signal
       })
         .then(response => {
@@ -114,5 +114,104 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.error('[PRELOAD] Error fetching providers:', error);
       return { providers: ['claude'], default: 'claude' };
     }
+  },
+
+  // --- Client & Matter Workspace APIs ---
+
+  createClient: async (name, displayName = null) => {
+    const response = await fetch(`${SERVER_URL}/api/clients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, displayName })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to create client');
+    return response.json();
+  },
+
+  listClients: async () => {
+    const response = await fetch(`${SERVER_URL}/api/clients`);
+    if (!response.ok) throw new Error('Failed to list clients');
+    return response.json();
+  },
+
+  getClient: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/clients/${id}`);
+    if (!response.ok) throw new Error('Client not found');
+    return response.json();
+  },
+
+  createMatter: async (clientId, name, matterType = null) => {
+    const response = await fetch(`${SERVER_URL}/api/matters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId, name, matterType })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to create matter');
+    return response.json();
+  },
+
+  listMatters: async (clientId) => {
+    const response = await fetch(`${SERVER_URL}/api/matters?clientId=${encodeURIComponent(clientId)}`);
+    if (!response.ok) throw new Error('Failed to list matters');
+    return response.json();
+  },
+
+  getMatter: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/matters/${id}`);
+    if (!response.ok) throw new Error('Matter not found');
+    return response.json();
+  },
+
+  // --- Template Library APIs ---
+
+  listTemplates: async (type = null) => {
+    const url = type
+      ? `${SERVER_URL}/api/templates?type=${encodeURIComponent(type)}`
+      : `${SERVER_URL}/api/templates`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to list templates');
+    return response.json();
+  },
+
+  getTemplate: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/templates/${id}`);
+    if (!response.ok) throw new Error('Template not found');
+    return response.json();
+  },
+
+  // --- Draft APIs ---
+
+  generateDraftPrompt: async (templateId, clientId, matterId = null, instructions = '') => {
+    const response = await fetch(`${SERVER_URL}/api/drafts/generate-prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId, clientId, matterId, instructions })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to generate prompt');
+    return response.json();
+  },
+
+  saveDraft: async (content, clientId, { templateId = null, matterId = null, title = null } = {}) => {
+    const response = await fetch(`${SERVER_URL}/api/drafts/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, clientId, templateId, matterId, title })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to save draft');
+    return response.json();
+  },
+
+  listDrafts: async (clientId, matterId = null) => {
+    let url = `${SERVER_URL}/api/drafts?clientId=${encodeURIComponent(clientId)}`;
+    if (matterId) url += `&matterId=${encodeURIComponent(matterId)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to list drafts');
+    return response.json();
+  },
+
+  getDraft: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/drafts/${id}`);
+    if (!response.ok) throw new Error('Draft not found');
+    return response.json();
   }
 });
