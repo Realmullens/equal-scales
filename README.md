@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Open Claude Cowork</h1>
+  <h1 align="center">Equal Scales - AI Coworker Built By Attorneys for Attorneys</h1>
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  An open-source desktop chat application powered by Claude Agent SDK and Composio Tool Router. Automate your work end-to-end across desktop and all your work apps in one place.
+  Equal Scales is an AI coworker built by attorneys for attorneys, powered by Claude Agent SDK and Composio Tool Router. Automate your legal work end-to-end across desktop and all your work apps in one place.
   <br><br>
   <a href="https://platform.composio.dev?utm_source=github&utm_medium=description&utm_campaign=2101&utm_content=open-claude-cowork">
     <b>Get your free API key to get started →</b>
@@ -51,7 +51,7 @@
 
 This repo includes two powerful AI tools:
 
-| | **Open Claude Cowork** | 🦑 **Secure Clawdbot** |
+| | **Equal Scales** | 🦑 **Secure Clawdbot** |
 |---|---|---|
 | **What** | Full-featured desktop chat interface | Personal AI assistant on messaging |
 | **Where** | macOS, Windows, Linux | WhatsApp, Telegram, Signal, iMessage |
@@ -63,7 +63,7 @@ Both include **500+ app integrations** via Composio (Gmail, Slack, GitHub, Googl
 
 ## Quick Start
 
-### Open Claude Cowork
+### Equal Scales
 
 ```bash
 git clone https://github.com/ComposioHQ/open-claude-cowork.git
@@ -96,7 +96,7 @@ See [Secure Clawdbot Documentation](./clawd/README.md) for full setup.
 
 ## Features
 
-### Open Claude Cowork
+### Equal Scales
 - **Multi-Provider Support** - Claude Agent SDK or Opencode for different models
 - **Persistent Sessions** - Context maintained across messages
 - **Real-time Streaming** - Token-by-token response display
@@ -160,7 +160,7 @@ See [Agent Skills documentation](https://platform.claude.com/docs/en/agent-sdk/s
 ## Project Structure
 
 ```
-open-claude-cowork/
+equal-scales/
 ├── main.js              # Electron main process
 ├── renderer/            # Frontend UI
 ├── server/              # Backend + providers
@@ -224,5 +224,5 @@ open-claude-cowork/
 </p>
 
 <p align="center">
-  Built with Claude Code and Composio
+  Equal Scales - Built with Claude Code and Composio
 </p>

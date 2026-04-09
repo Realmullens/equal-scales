@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Open Claude Cowork Setup Script
+# Equal Scales Setup Script
 # This script helps you get started with Composio and configure the project
 
 set -e
 
-echo "Open Claude Cowork Setup"
+echo "Equal Scales Setup"
 echo "================================"
 echo ""
 

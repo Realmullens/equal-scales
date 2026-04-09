@@ -36,7 +36,7 @@ let todos = [];
 let toolCalls = [];
 let attachedFiles = [];
 let selectedProvider = 'claude';
-let selectedModel = 'claude-sonnet-4-5-20250514';
+let selectedModel = 'claude-sonnet-4-6';
 let thinkingMode = 'normal'; // 'normal' or 'extended'
 let isWaitingForResponse = false;
 
@@ -50,9 +50,9 @@ let currentChatId = null;
 // Model configurations per provider
 const providerModels = {
   claude: [
-    { value: 'claude-opus-4-5-20250514', label: 'Opus 4.5', desc: 'Most capable for complex work' },
-    { value: 'claude-sonnet-4-5-20250514', label: 'Sonnet 4.5', desc: 'Best for everyday tasks', default: true },
-    { value: 'claude-haiku-4-5-20250514', label: 'Haiku 4.5', desc: 'Fastest for quick answers' }
+    { value: 'claude-opus-4-6', label: 'Opus 4.6', desc: 'Most capable for complex work' },
+    { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', desc: 'Best for everyday tasks', default: true },
+    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', desc: 'Fastest for quick answers' }
   ],
   opencode: [
     // Opencode Zen (Free)
@@ -68,8 +68,38 @@ const providerModels = {
   ]
 };
 
+// Theme management
+function getPreferredTheme() {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'dark' || stored === 'light') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function setTheme(theme) {
+  document.documentElement.classList.add('theme-transitioning');
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  setTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const theme = getPreferredTheme();
+  document.documentElement.setAttribute('data-theme', theme);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      setTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
+
 // Initialize
 function init() {
+  initTheme();
   updateGreeting();
   setupEventListeners();
   loadAllChats();
@@ -79,6 +109,12 @@ function init() {
 
 function generateId() {
   return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
 // Save current chat state
@@ -377,6 +413,10 @@ function setupEventListeners() {
   });
   messageInput.addEventListener('keydown', (e) => handleKeyPress(e, chatForm));
 
+  // Theme toggle
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+
   // Right sidebar toggle
   sidebarToggle.addEventListener('click', toggleSidebar);
   rightSidebarExpand.addEventListener('click', toggleSidebar);
@@ -590,7 +630,7 @@ function handleFileSelect(event, context) {
       return;
     }
 
-    // Read file as base64 for images or text
+    // Read file contents
     const reader = new FileReader();
     reader.onload = (e) => {
       attachedFiles.push({
@@ -602,10 +642,22 @@ function handleFileSelect(event, context) {
       renderAttachedFiles(context);
     };
 
+    // Determine read strategy based on file type
+    const textTypes = ['text/', 'application/json', 'application/xml', 'application/javascript',
+      'application/typescript', 'application/x-yaml', 'application/x-sh'];
+    const textExtensions = ['.txt', '.md', '.csv', '.json', '.xml', '.yaml', '.yml', '.js', '.ts',
+      '.py', '.html', '.css', '.sh', '.env', '.log', '.sql', '.rb', '.go', '.rs', '.java', '.c',
+      '.h', '.cpp', '.swift', '.kt', '.toml', '.ini', '.cfg', '.conf'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    const isTextFile = textTypes.some(t => file.type.startsWith(t)) || textExtensions.includes(ext);
+
     if (file.type.startsWith('image/')) {
       reader.readAsDataURL(file);
-    } else {
+    } else if (isTextFile) {
       reader.readAsText(file);
+    } else {
+      // Binary files (docx, pdf, etc.) — read as base64
+      reader.readAsDataURL(file);
     }
   });
 
@@ -642,6 +694,13 @@ function renderAttachedFiles(context) {
 
   if (attachedFiles.length === 0) {
     filesContainer.remove();
+  }
+
+  // Update send button state based on files
+  if (context === 'home') {
+    updateSendButton(homeInput, homeSendBtn);
+  } else {
+    updateSendButton(messageInput, chatSendBtn);
   }
 }
 
@@ -697,8 +756,8 @@ function updateSendButton(input, button) {
     if (sendIcon) sendIcon.classList.add('hidden');
     if (stopIcon) stopIcon.classList.remove('hidden');
   } else {
-    // Normal mode - show send icon
-    button.disabled = !input.value.trim();
+    // Normal mode - show send icon, enable if text or files present
+    button.disabled = !input.value.trim() && attachedFiles.length === 0;
     button.classList.remove('streaming');
     const sendIcon = button.querySelector('.send-icon');
     const stopIcon = button.querySelector('.stop-icon');
@@ -782,8 +841,9 @@ async function handleSendMessage(e) {
 
   const input = isFirstMessage ? homeInput : messageInput;
   const message = input.value.trim();
+  const filesToSend = [...attachedFiles];
 
-  if (!message) {
+  if (!message && filesToSend.length === 0) {
     return;
   }
 
@@ -792,17 +852,45 @@ async function handleSendMessage(e) {
     currentChatId = generateId();
     switchToChatView();
     isFirstMessage = false;
-    chatTitle.textContent = message.length > 30 ? message.substring(0, 30) + '...' : message;
+    const titleText = message || filesToSend.map(f => f.name).join(', ');
+    chatTitle.textContent = titleText.length > 30 ? titleText.substring(0, 30) + '...' : titleText;
   } else if (!currentChatId) {
     currentChatId = generateId();
-    chatTitle.textContent = message.length > 30 ? message.substring(0, 30) + '...' : message;
+    const titleText = message || filesToSend.map(f => f.name).join(', ');
+    chatTitle.textContent = titleText.length > 30 ? titleText.substring(0, 30) + '...' : titleText;
   }
 
-  // Add user message
-  addUserMessage(message);
+  // Build the prompt: include file contents in the message sent to the agent
+  let prompt = message;
+  if (filesToSend.length > 0) {
+    const fileParts = filesToSend.map(f => {
+      if (f.type.startsWith('image/')) {
+        return `[Attached image: ${f.name} (${formatFileSize(f.size)})]`;
+      }
+      // If data is a data URL (base64), it's a binary file
+      if (typeof f.data === 'string' && f.data.startsWith('data:')) {
+        return `[Attached file: ${f.name} (${formatFileSize(f.size)}) — binary file, content not directly readable as text]`;
+      }
+      // Text-based file — include contents
+      return `--- File: ${f.name} ---\n${f.data}`;
+    }).join('\n\n');
 
+    if (message) {
+      prompt = `${message}\n\n${fileParts}`;
+    } else {
+      prompt = `Please review the following attached file(s):\n\n${fileParts}`;
+    }
+  }
+
+  // Add user message to chat (display version)
+  addUserMessage(message, filesToSend);
+
+  // Clear input and files
   input.value = '';
   resetTextareaHeight(input);
+  attachedFiles = [];
+  const context = isFirstMessage || input === homeInput ? 'home' : 'chat';
+  renderAttachedFiles(context);
 
   // Set loading state
   isWaitingForResponse = true;
@@ -821,7 +909,7 @@ async function handleSendMessage(e) {
   try {
     console.log('[Chat] Sending message to API...');
     // Pass chatId, provider, and model for session management
-    const response = await window.electronAPI.sendMessage(message, currentChatId, selectedProvider, selectedModel);
+    const response = await window.electronAPI.sendMessage(prompt, currentChatId, selectedProvider, selectedModel);
     console.log('[Chat] Response received');
 
     const reader = await response.getReader();
@@ -1014,7 +1102,7 @@ async function handleSendMessage(e) {
 }
 
 // Add user message to chat
-function addUserMessage(text) {
+function addUserMessage(text, files = []) {
   // Handle browser transition before adding message
   handleBrowserTransitionOnMessage();
 
@@ -1023,7 +1111,24 @@ function addUserMessage(text) {
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = text;
+
+  // Show attached file names
+  if (files.length > 0) {
+    const filesDiv = document.createElement('div');
+    filesDiv.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;';
+    files.forEach(f => {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--hover-overlay-strong); border-radius: 6px; font-size: 12px;';
+      badge.textContent = f.name;
+      filesDiv.appendChild(badge);
+    });
+    contentDiv.appendChild(filesDiv);
+  }
+
+  if (text) {
+    const textNode = document.createTextNode(text);
+    contentDiv.appendChild(textNode);
+  }
 
   messageDiv.appendChild(contentDiv);
   chatMessages.appendChild(messageDiv);

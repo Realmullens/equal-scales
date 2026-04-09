@@ -15,14 +15,20 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Initialize Composio
-const composio = new Composio();
+// Initialize Composio only when an API key is available
+const composioEnabled = Boolean(process.env.COMPOSIO_API_KEY);
+const composio = composioEnabled ? new Composio() : null;
 
 const composioSessions = new Map();
 let defaultComposioSession = null;
 
 // Pre-initialize Composio session on startup
 async function initializeComposioSession() {
+  if (!composioEnabled) {
+    console.log('[COMPOSIO] Disabled: no COMPOSIO_API_KEY found. Starting without Tool Router.');
+    return;
+  }
+
   const defaultUserId = 'default-user';
   console.log('[COMPOSIO] Pre-initializing session for:', defaultUserId);
   try {
@@ -103,11 +109,11 @@ app.post('/api/chat', async (req, res) => {
   });
 
   try {
-    // Get or create Composio session for this user
+    // Get or create Composio session for this user when available
     let composioSession = composioSessions.get(userId);
-    if (!composioSession) {
+    if (composioEnabled && !composioSession) {
       console.log('[COMPOSIO] Creating new session for user:', userId);
-      res.write(`data: ${JSON.stringify({ type: 'status', message: 'Initializing session...' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'status', message: 'Initializing tool session...' })}\n\n`);
       composioSession = await composio.create(userId);
       composioSessions.set(userId, composioSession);
       console.log('[COMPOSIO] Session created with MCP URL:', composioSession.mcp.url);
@@ -121,13 +127,13 @@ app.post('/api/chat', async (req, res) => {
     const provider = getProvider(providerName);
 
     // Build MCP servers config - passed to provider
-    const mcpServers = {
+    const mcpServers = composioSession ? {
       composio: {
         type: 'http',
         url: composioSession.mcp.url,
         headers: composioSession.mcp.headers
       }
-    };
+    } : {};
 
     console.log('[CHAT] Using provider:', provider.name);
     console.log('[CHAT] All stored sessions:', Array.from(provider.sessions.entries()));
