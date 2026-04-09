@@ -213,5 +213,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const response = await fetch(`${SERVER_URL}/api/drafts/${id}`);
     if (!response.ok) throw new Error('Draft not found');
     return response.json();
+  },
+
+  // --- File Browser APIs ---
+
+  browseFiles: async (relativePath = '') => {
+    const url = relativePath
+      ? `${SERVER_URL}/api/files?path=${encodeURIComponent(relativePath)}`
+      : `${SERVER_URL}/api/files`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to browse files');
+    return response.json();
   }
 });

@@ -11,6 +11,7 @@ import clientRoutes from './routes/clients.js';
 import matterRoutes from './routes/matters.js';
 import templateRoutes from './routes/templates.js';
 import draftRoutes from './routes/drafts.js';
+import fileRoutes from './routes/files.js';
 import { seedDefaultTemplates, syncTemplates } from './services/template-service.js';
 import { gatherContext, formatContextForPrompt } from './services/context-service.js';
 
@@ -255,6 +256,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/matters', matterRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/drafts', draftRoutes);
+app.use('/api/files', fileRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
