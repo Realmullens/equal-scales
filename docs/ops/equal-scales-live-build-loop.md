@@ -23,7 +23,7 @@ If you do not update this file, the loop is broken.
 - Execution mode: spec-driven agentic development loop
 - Primary long-run mode:
   - Claude Code = primary planning and implementation agent across consecutive bounded slices
-  - Codex = review agent after each meaningful implementation part/checkpoint
+  - Codex = active required review agent after each meaningful implementation part/checkpoint
 - Human escalation target: Bailey
 - Last updated: 2026-04-09
 
@@ -175,6 +175,18 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 1 Slice 02)
+- **Slice:** Template, Draft, and Conversation Foundation Hardening
+- **Result:** ALL ACCEPTANCE CRITERIA PASSED (62/62 tests)
+- **What was verified:**
+  - Templates: create, get by ID/slug, list, list by type, update metadata, slug uniqueness constraint
+  - Drafts: create, get, list by client, list by matter, version scoping across matters, cross-client ownership blocked, nonexistent matter blocked, status update
+  - Conversations: create, get, list scoped by client/matter, no cross-client leakage, unscoped conversations work, cross-client ownership blocked
+  - Messages: create, retrieve in insertion order (rowid tiebreaker), metadata JSON, conversation-scoped (no leakage), FK constraint on nonexistent conversation
+- **Files added:** `server/tests/verify-template-draft-conversation-foundation.js`
+- **Verification command:** `cd server && node tests/verify-template-draft-conversation-foundation.js`
+- **Next recommended slice:** Milestone 1 Slice 03 — Vault filesystem integrity verification (verify vault directory creation, starter markdown files, path safety, file existence after client/matter creation)
+
 ### 2026-04-09 (Milestone 1 Slice 01)
 - **Slice:** Client and Matter Foundation Hardening
 - **Result:** ALL ACCEPTANCE CRITERIA PASSED (41/41 tests + 6 API checks)
@@ -216,14 +228,14 @@ None currently.
 
 ## Next automatic task
 
-Execute Milestone 1 Slice 02: Template and Draft Foundation Hardening.
+Execute Milestone 1 Slice 03: Vault Filesystem Integrity Verification.
 
 Focus:
-- verify template sync from filesystem to DB (idempotent, purges stale)
-- verify draft creation with version numbering and cross-client ownership validation
-- verify conversations and messages repository behavior
-- add repeatable verification script for templates/drafts/conversations
-- update milestone tracker status
+- verify vault directory creation on client/matter creation
+- verify starter markdown files are written (profile.md, notes.md, matter.md, facts.md, tasks.md)
+- verify drafts/ and source-documents/ directories created for matters
+- verify vault path safety (no traversal outside vault root)
+- add repeatable verification script for filesystem behavior
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
