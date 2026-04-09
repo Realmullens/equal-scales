@@ -62,7 +62,23 @@ Equal Scales must stay aligned with these principles:
    - recommended operating model for running Codex and Claude Code in a low-touch development loop
    - explains the living-loop document strategy, role split, verification layers, and milestone cadence
 
-10. `docs/plans/phase-1-kickoff-prompt-for-claude-code.md`
+10. `docs/ops/equal-scales-live-build-loop.md`
+   - the living execution heartbeat for agent runs
+   - must be read at the start of each run and updated before ending
+
+11. `docs/ops/equal-scales-outcome-tests.md`
+   - product-facing acceptance scenarios used to decide whether milestones are actually complete
+
+12. `docs/ops/equal-scales-agent-runbook-codex.md`
+   - operational instructions for Codex runs
+
+13. `docs/ops/equal-scales-agent-runbook-claude-code.md`
+   - operational instructions for Claude Code runs
+
+14. `docs/ops/equal-scales-milestones.md`
+   - milestone tracker for the agentic loop
+
+15. `docs/plans/phase-1-kickoff-prompt-for-claude-code.md`
    - kickoff prompt for handing specific implementation work to Claude Code
 
 ---
@@ -112,6 +128,36 @@ These docs are also mirrored in Google Docs for easier collaboration and editing
   - `docs/architecture/equal-scales-information-architecture.md`
 - Google Doc:
   - https://docs.google.com/document/d/1k_7a8iqAKuXE8AlP6jFaVzGLGsp_tLdE6IVWKdH2KG0/edit?usp=drivesdk
+
+### 8. Equal Scales Live Build Loop
+- Markdown source:
+  - `docs/ops/equal-scales-live-build-loop.md`
+- Google Doc:
+  - https://docs.google.com/document/d/1V37uBSFxAmEkB7YQZuEF1tt58z4vGdzaIOqEXKDDREc/edit?usp=drivesdk
+
+### 9. Equal Scales Outcome Tests
+- Markdown source:
+  - `docs/ops/equal-scales-outcome-tests.md`
+- Google Doc:
+  - https://docs.google.com/document/d/1-Y9dPobn1gMSnnZ6utmHhB-a7YBaNJpfDJ3BBkru-Tc/edit?usp=drivesdk
+
+### 10. Equal Scales Agent Runbook — Codex
+- Markdown source:
+  - `docs/ops/equal-scales-agent-runbook-codex.md`
+- Google Doc:
+  - https://docs.google.com/document/d/1pU2fi6jRMKtlA1PgpfAvb5qSYoAMLzcKE6vnUg29T9w/edit?usp=drivesdk
+
+### 11. Equal Scales Agent Runbook — Claude Code
+- Markdown source:
+  - `docs/ops/equal-scales-agent-runbook-claude-code.md`
+- Google Doc:
+  - https://docs.google.com/document/d/1HfSMa8pmG7VqynzFi6crl5pzcabKTBwppigTLgJ9jxM/edit?usp=drivesdk
+
+### 12. Equal Scales Milestones
+- Markdown source:
+  - `docs/ops/equal-scales-milestones.md`
+- Google Doc:
+  - https://docs.google.com/document/d/1XDGkpRelkJK3Y0F6Z64b9nIqGRhRpHvZ0mSdusmlwE4/edit?usp=drivesdk
 
 ---
 

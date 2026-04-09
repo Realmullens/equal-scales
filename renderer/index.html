@@ -16,236 +16,148 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Left Sidebar - Workspace Navigator -->
-    <aside class="left-sidebar" id="leftSidebar">
-      <div class="left-sidebar-header">
-        <button class="new-chat-sidebar-btn" onclick="startNewChat()" title="New chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span>New Chat</span>
-        </button>
-        <button class="theme-toggle-btn" id="themeToggle" title="Toggle dark mode">
-          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-        </button>
-        <button class="sidebar-collapse-btn" id="leftSidebarToggle" title="Collapse sidebar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-      </div>
-      <!-- Workspace Navigator -->
-      <div class="sidebar-nav-content">
-        <!-- Clients Section -->
-        <div class="workspace-section" id="clientsSection">
-          <div class="workspace-section-header" data-section="clientsSection">
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            <span>Clients</span>
-            <button class="workspace-add-btn" id="addClientBtn" title="Add client">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="workspace-list" id="workspaceNav">
-            <!-- Client/matter items populated by JS -->
-          </div>
-        </div>
-
-        <!-- Templates Section -->
-        <div class="workspace-section" id="templatesSection">
-          <div class="workspace-section-header" data-section="templatesSection">
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="3" y1="9" x2="21" y2="9"></line>
-              <line x1="9" y1="21" x2="9" y2="9"></line>
-            </svg>
-            <span>Templates</span>
-          </div>
-          <div class="workspace-list" id="templatesList">
-            <!-- Template items populated by JS -->
-          </div>
-        </div>
-
-        <!-- Drafts Section -->
-        <div class="workspace-section" id="draftsSection">
-          <div class="workspace-section-header" data-section="draftsSection">
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            <span>Drafts</span>
-          </div>
-          <div class="workspace-list" id="draftsList">
-            <!-- Draft items populated by JS -->
-          </div>
-        </div>
-
-        <!-- Recent Chats Section -->
-        <div class="workspace-section" id="chatsSection">
-          <div class="workspace-section-header" data-section="chatsSection">
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <span>Recent Chats</span>
-          </div>
-          <div class="workspace-list" id="chatHistoryList">
-            <!-- Chat history items will be added here -->
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Left Sidebar Expand Button (visible when collapsed) -->
-    <button class="left-sidebar-expand-btn" id="leftSidebarExpand" title="Expand chat history">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="9 18 15 12 9 6"></polyline>
-      </svg>
-    </button>
-
     <!-- Main Content -->
     <div class="main-content">
-      <!-- Home View (shown when no messages) -->
+      <!-- Home View -->
       <div class="home-view" id="homeView">
-      <div class="greeting-section">
-        <div class="greeting">
-          <h1 class="greeting-text">Equal Scales</h1>
-          <p class="tagline">AI Coworker Built By Attorneys for Attorneys</p>
+        <div class="home-greeting">
+          <svg class="home-icon" viewBox="0 0 24 24" fill="none" width="28" height="28">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h1 class="home-title">What can I help you with?</h1>
         </div>
-      </div>
 
-      <div class="input-container home-input">
-        <form id="homeForm" class="input-form">
-          <div class="input-wrapper">
-            <textarea
-              id="homeInput"
-              class="message-input"
-              placeholder="Ask me anything"
-              autocomplete="off"
-              rows="1"
-            ></textarea>
-            <div class="input-controls">
-              <div class="left-controls">
-                <input type="file" id="homeFileInput" class="file-input-hidden" multiple />
-                <button type="button" class="control-btn attach-btn" id="homeAttachBtn" title="Attach file">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-                <button type="button" class="control-btn thinking-btn" id="homeThinkingBtn" title="Extended thinking ⇧⌘E">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </button>
-              </div>
-              <div class="right-controls">
-                <!-- Provider Selector Dropdown -->
-                <div class="dropdown-container" id="homeProviderDropdown">
-                  <button type="button" class="provider-selector">
-                    <span class="provider-label">Claude</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </button>
-                  <div class="dropdown-menu provider-menu">
-                    <div class="dropdown-item selected" data-value="claude">
-                      <div class="item-row">
-                        <span class="item-label">Claude</span>
-                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
+        <div class="home-input-area">
+          <form id="homeForm" class="input-form">
+            <div class="input-wrapper">
+              <textarea
+                id="homeInput"
+                class="message-input"
+                placeholder="How can I help you today?"
+                autocomplete="off"
+                rows="1"
+              ></textarea>
+              <div class="input-controls">
+                <div class="left-controls">
+                  <!-- Workspace Selector (like "Work in a project") -->
+                  <div class="dropdown-container" id="workspaceDropdown">
+                    <button type="button" class="workspace-selector" id="workspaceSelectorBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                      <span id="workspaceSelectorLabel">Work in a client</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    <div class="dropdown-menu workspace-menu" id="workspaceMenu">
+                      <div class="dropdown-item" data-value="">
+                        <div class="item-row">
+                          <span class="item-label">All clients</span>
+                        </div>
+                        <span class="item-desc">Chat across all workspaces</span>
                       </div>
-                      <span class="item-desc">Claude Agent SDK</span>
-                    </div>
-                    <div class="dropdown-item" data-value="opencode">
-                      <div class="item-row">
-                        <span class="item-label">Opencode</span>
-                      </div>
-                      <span class="item-desc">Opencode SDK</span>
+                      <!-- Client items populated by JS -->
                     </div>
                   </div>
-                </div>
-                <!-- Model Selector Dropdown -->
-                <div class="dropdown-container" id="homeModelDropdown">
-                  <button type="button" class="model-selector">
-                    <span class="model-label">Sonnet 4.6</span>
+                  <button type="button" class="control-btn" id="openInFinderBtn" title="Open in Finder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="6 9 12 15 18 9"></polyline>
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                   </button>
-                  <div class="dropdown-menu model-menu" data-provider="claude">
-                    <div class="dropdown-item" data-value="claude-opus-4-6">
-                      <div class="item-row">
-                        <span class="item-label">Opus 4.6</span>
+                  <input type="file" id="homeFileInput" class="file-input-hidden" multiple />
+                  <button type="button" class="control-btn attach-btn" id="homeAttachBtn" title="Attach file">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                  </button>
+                </div>
+                <div class="right-controls">
+                  <!-- Model Selector -->
+                  <div class="dropdown-container" id="homeModelDropdown">
+                    <button type="button" class="model-selector">
+                      <span class="model-label">Sonnet 4.6</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    <div class="dropdown-menu model-menu" data-provider="claude">
+                      <div class="dropdown-item" data-value="claude-opus-4-6">
+                        <div class="item-row"><span class="item-label">Opus 4.6</span></div>
+                        <span class="item-desc">Most capable for complex work</span>
                       </div>
-                      <span class="item-desc">Most capable for complex work</span>
-                    </div>
-                    <div class="dropdown-item selected" data-value="claude-sonnet-4-6">
-                      <div class="item-row">
-                        <span class="item-label">Sonnet 4.6</span>
-                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
+                      <div class="dropdown-item selected" data-value="claude-sonnet-4-6">
+                        <div class="item-row">
+                          <span class="item-label">Sonnet 4.6</span>
+                          <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <span class="item-desc">Best for everyday tasks</span>
                       </div>
-                      <span class="item-desc">Best for everyday tasks</span>
-                    </div>
-                    <div class="dropdown-item" data-value="claude-haiku-4-5-20251001">
-                      <div class="item-row">
-                        <span class="item-label">Haiku 4.5</span>
+                      <div class="dropdown-item" data-value="claude-haiku-4-5-20251001">
+                        <div class="item-row"><span class="item-label">Haiku 4.5</span></div>
+                        <span class="item-desc">Fastest for quick answers</span>
                       </div>
-                      <span class="item-desc">Fastest for quick answers</span>
                     </div>
                   </div>
+                  <!-- Theme toggle -->
+                  <button class="control-btn theme-toggle-btn" id="themeToggle" title="Toggle dark mode">
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="5"></circle>
+                      <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                      <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                  </button>
+                  <button type="submit" class="send-btn" id="homeSendBtn" disabled>
+                    <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="12" y1="19" x2="12" y2="5"></line>
+                      <polyline points="5 12 12 5 19 12"></polyline>
+                    </svg>
+                    <svg class="stop-icon hidden" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                    </svg>
+                  </button>
                 </div>
-                <button type="submit" class="send-btn" id="homeSendBtn" disabled>
-                  <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="19" x2="12" y2="5"></line>
-                    <polyline points="5 12 12 5 19 12"></polyline>
-                  </svg>
-                  <svg class="stop-icon hidden" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-                  </svg>
-                </button>
               </div>
             </div>
+          </form>
+        </div>
+
+        <!-- Templates and Drafts (scoped to selected workspace) -->
+        <div class="home-panels" id="homePanels">
+          <div class="home-panel" id="homeDraftsPanel">
+            <div class="home-panel-header">
+              <span>Drafts</span>
+            </div>
+            <div class="home-panel-list" id="draftsList">
+              <!-- Populated by JS -->
+            </div>
           </div>
-        </form>
+          <div class="home-panel" id="homeTemplatesPanel">
+            <div class="home-panel-header">
+              <span>Templates</span>
+            </div>
+            <div class="home-panel-list" id="templatesList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent activity -->
+        <div class="home-activity" id="homeActivity">
+          <div class="home-activity-header">
+            <span>Recent chats</span>
+          </div>
+          <div class="home-activity-list" id="homeActivityList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
       </div>
-    </div>
 
     <!-- Chat View (shown when there are messages) -->
     <div class="chat-view hidden" id="chatView">
@@ -257,12 +169,19 @@
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
           </button>
-          <button class="new-chat-btn" onclick="startNewChat()" title="New chat">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="new-chat-btn" id="chatOpenInFinderBtn" title="Open in Finder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <button class="new-chat-btn" onclick="startNewChat()" title="New chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
         </header>
 
         <div class="messages-container" id="chatMessages">

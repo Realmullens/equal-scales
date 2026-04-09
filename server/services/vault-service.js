@@ -17,7 +17,14 @@ import { clientDir, matterDir, matterDraftsDir, matterSourceDocsDir } from '../s
  * Writes profile.md and notes.md starter files.
  */
 function createClientVault(client) {
-  const dir = clientDir(client.id, client.slug);
+  let dir = clientDir(client.display_name || client.name);
+
+  // Handle collision: append (2), (3), etc. if folder already exists
+  if (fs.existsSync(dir)) {
+    let suffix = 2;
+    while (fs.existsSync(dir + ` (${suffix})`)) suffix++;
+    dir = dir + ` (${suffix})`;
+  }
 
   try {
     fs.mkdirSync(dir, { recursive: true });
@@ -60,12 +67,21 @@ _Use this file for running notes about this client._
  * Writes matter.md, facts.md, tasks.md and creates drafts/ and source-documents/ dirs.
  */
 function createMatterVault(client, matter) {
-  const dir = matterDir(client.id, client.slug, matter.id, matter.slug);
+  // Use client's stored root_path if available, otherwise derive it
+  const clientPath = client.root_path || clientDir(client.display_name || client.name);
+  let dir = matterDir(clientPath, matter.name);
+
+  // Handle collision
+  if (fs.existsSync(dir)) {
+    let suffix = 2;
+    while (fs.existsSync(dir + ` (${suffix})`)) suffix++;
+    dir = dir + ` (${suffix})`;
+  }
 
   try {
     fs.mkdirSync(dir, { recursive: true });
-    fs.mkdirSync(matterDraftsDir(client.id, client.slug, matter.id, matter.slug), { recursive: true });
-    fs.mkdirSync(matterSourceDocsDir(client.id, client.slug, matter.id, matter.slug), { recursive: true });
+    fs.mkdirSync(matterDraftsDir(dir), { recursive: true });
+    fs.mkdirSync(matterSourceDocsDir(dir), { recursive: true });
 
     // matter.md — matter overview
     const matterContent = `# ${matter.name}

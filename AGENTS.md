@@ -50,6 +50,11 @@ Before making architecture or implementation decisions, read these files in orde
 7. `docs/plans/2026-04-08-equal-scales-template-first-implementation-spec.md`
 8. `docs/plans/2026-04-09-equal-scales-permissive-document-stack-implementation-guide.md`
 9. `docs/plans/2026-04-09-equal-scales-document-stack-phase-1-2-execution-plan.md`
+10. `docs/ops/equal-scales-live-build-loop.md`
+11. `docs/ops/equal-scales-outcome-tests.md`
+12. `docs/ops/equal-scales-agent-runbook-codex.md`
+13. `docs/ops/equal-scales-agent-runbook-claude-code.md`
+14. `docs/ops/equal-scales-milestones.md`
 
 ## Current preferred document stack
 

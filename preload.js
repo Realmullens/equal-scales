@@ -224,5 +224,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to browse files');
     return response.json();
+  },
+
+  createFolder: async (relativePath) => {
+    const response = await fetch(`${SERVER_URL}/api/files/mkdir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: relativePath })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to create folder');
+    return response.json();
+  },
+
+  deleteFile: async (relativePath) => {
+    const response = await fetch(`${SERVER_URL}/api/files?path=${encodeURIComponent(relativePath)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to delete');
+    return response.json();
+  },
+
+  // Reveal a file/folder in Finder (selects it in parent)
+  openInFinder: async (targetPath) => {
+    return ipcRenderer.invoke('open-in-finder', targetPath);
+  },
+
+  // Open a folder directly in Finder
+  openFolderInFinder: async (targetPath) => {
+    return ipcRenderer.invoke('open-folder-in-finder', targetPath);
   }
 });

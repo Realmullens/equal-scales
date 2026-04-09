@@ -110,8 +110,12 @@ function init() {
   setupEventListeners();
   loadAllChats();
   renderChatHistory();
-  loadClients(); // Phase 2: load workspace nav
-  loadTemplates(); // Phase 3: load template library
+  loadClients().then(() => {
+    updateWorkspaceSelector();
+    renderHomeActivity();
+  });
+  loadTemplates();
+  restoreFileBrowserState();
   homeInput.focus();
 }
 
@@ -171,6 +175,7 @@ function saveState() {
   localStorage.setItem('selectedModel', selectedModel);
 
   renderChatHistory();
+  renderHomeActivity();
 }
 
 // Load all chats from localStorage
@@ -319,6 +324,7 @@ function loadChat(chat) {
 
 // Render chat history sidebar
 function renderChatHistory() {
+  if (!chatHistoryList) return; // element removed in new layout
   chatHistoryList.innerHTML = '';
 
   if (allChats.length === 0) {
@@ -351,6 +357,722 @@ function renderChatHistory() {
     };
     chatHistoryList.appendChild(item);
   });
+}
+
+// ==================== FINDER-FIRST FILE ACTIONS ====================
+
+/**
+ * Open the appropriate vault location in Finder based on current workspace context.
+ * - If a matter is selected → open the matter folder
+ * - If only a client is selected → open the client folder
+ * - Otherwise → open the vault root
+ */
+function openContextualFinder() {
+  if (currentMatterId && currentClientId) {
+    const client = allClients.find(c => c.id === currentClientId);
+    const matter = client?._matters?.find(m => m.id === currentMatterId);
+    if (matter?.matter_path) {
+      window.electronAPI.openFolderInFinder(matter.matter_path);
+      showToast(`Opened ${matter.name} in Finder`);
+      return;
+    }
+  }
+  if (currentClientId) {
+    const client = allClients.find(c => c.id === currentClientId);
+    if (client?.root_path) {
+      window.electronAPI.openFolderInFinder(client.root_path);
+      showToast(`Opened ${client.display_name || client.name} in Finder`);
+      return;
+    }
+  }
+  // Default: open vault root
+  window.electronAPI.openFolderInFinder('');
+  showToast('Opened vault in Finder');
+}
+
+/**
+ * Open vault root in Finder.
+ */
+function openVaultInFinder() {
+  window.electronAPI.openFolderInFinder('');
+  showToast('Opened vault in Finder');
+}
+
+/**
+ * Open the active client folder in Finder.
+ */
+function openClientInFinder() {
+  if (!currentClientId) { showToast('No client selected'); return; }
+  const client = allClients.find(c => c.id === currentClientId);
+  if (!client?.root_path) { showToast('Client folder not found'); return; }
+  window.electronAPI.openFolderInFinder(client.root_path);
+  showToast(`Opened ${client.display_name || client.name} in Finder`);
+}
+
+/**
+ * Open the active matter folder in Finder.
+ */
+function openMatterInFinder() {
+  if (!currentMatterId) { showToast('No matter selected'); return; }
+  const client = allClients.find(c => c.id === currentClientId);
+  const matter = client?._matters?.find(m => m.id === currentMatterId);
+  if (!matter?.matter_path) { showToast('Matter folder not found'); return; }
+  window.electronAPI.openFolderInFinder(matter.matter_path);
+  showToast(`Opened ${matter.name} in Finder`);
+}
+
+/**
+ * Open the active matter's drafts folder in Finder.
+ */
+function openDraftsInFinder() {
+  if (!currentMatterId) { showToast('No matter selected'); return; }
+  const client = allClients.find(c => c.id === currentClientId);
+  const matter = client?._matters?.find(m => m.id === currentMatterId);
+  if (!matter?.matter_path) { showToast('Matter folder not found'); return; }
+  window.electronAPI.openFolderInFinder(matter.matter_path + '/drafts');
+  showToast('Opened drafts folder in Finder');
+}
+
+/**
+ * Open the active matter's source-documents folder in Finder.
+ */
+function openSourceDocsInFinder() {
+  if (!currentMatterId) { showToast('No matter selected'); return; }
+  const client = allClients.find(c => c.id === currentClientId);
+  const matter = client?._matters?.find(m => m.id === currentMatterId);
+  if (!matter?.matter_path) { showToast('Matter folder not found'); return; }
+  window.electronAPI.openFolderInFinder(matter.matter_path + '/source-documents');
+  showToast('Opened source documents in Finder');
+}
+
+/**
+ * Reveal a specific file in Finder.
+ */
+function revealFileInFinder(filePath) {
+  if (!filePath) { showToast('No file path'); return; }
+  window.electronAPI.openInFinder(filePath);
+}
+
+// Legacy stubs — old code may reference these
+function toggleFileBrowser() { openContextualFinder(); }
+
+// Stubs for removed file browser functions — safe no-ops
+function restoreFileBrowserState() { /* Finder-first: no in-app panel to restore */ }
+
+function initFileBrowserResize() {
+  const handle = document.getElementById('fbResizeHandle');
+  const panel = document.getElementById('fileBrowserPanel');
+  if (!handle || !panel) return;
+
+  let isResizing = false;
+
+  handle.addEventListener('pointerdown', (e) => {
+    isResizing = true;
+    handle.setPointerCapture(e.pointerId);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!isResizing) return;
+    const newWidth = Math.max(280, Math.min(window.innerWidth * 0.6, e.clientX));
+    panel.style.width = newWidth + 'px';
+    panel.style.minWidth = newWidth + 'px';
+  });
+
+  document.addEventListener('pointerup', () => {
+    if (!isResizing) return;
+    isResizing = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    localStorage.setItem('fbPanelWidth', panel.style.width);
+  });
+}
+
+/**
+ * Browse to a path in the vault.
+ */
+async function browseToPath(relativePath) {
+  try {
+    const data = await window.electronAPI.browseFiles(relativePath);
+    if (data.entries !== undefined) {
+      renderFileBrowser(data);
+      fileBrowserPath.push(relativePath);
+      updateBreadcrumb(data.path);
+      document.getElementById('fbBackBtn').disabled = fileBrowserPath.length <= 1;
+    }
+  } catch (err) {
+    console.error('[FileBrowser] Browse error:', err);
+  }
+}
+
+/**
+ * Go back in file browser history.
+ */
+function fileBrowserBack() {
+  if (fileBrowserPath.length > 1) {
+    fileBrowserPath.pop(); // remove current
+    const prev = fileBrowserPath.pop(); // get previous (browseToPath will re-push)
+    browseToPath(prev);
+  }
+}
+
+/**
+ * Render file browser entries.
+ */
+function renderFileBrowser(data) {
+  const content = document.getElementById('fileBrowserContent');
+  content.className = 'file-browser-content' + (fileBrowserViewMode === 'grid' ? ' grid-view' : '');
+  content.innerHTML = '';
+  fileBrowserEntries = data.entries || [];
+  fbSelectedIndex = -1;
+
+  if (fileBrowserEntries.length === 0) {
+    content.innerHTML = '<div class="fb-empty">Empty folder</div>';
+    return;
+  }
+
+  fileBrowserEntries.forEach((entry, index) => {
+    const el = document.createElement('div');
+    el.className = 'fb-entry';
+    el.dataset.index = index;
+
+    if (entry.type === 'directory') {
+      el.innerHTML = `
+        <svg class="fb-entry-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="fb-entry-name">${escapeHtml(entry.name)}</span>
+        <span class="fb-entry-count">${entry.childCount || 0} items</span>
+      `;
+      el.onclick = () => browseToPath(entry.path);
+    } else {
+      el.innerHTML = `
+        ${getFileIcon(entry.extension)}
+        <span class="fb-entry-name">${escapeHtml(entry.name)}</span>
+        <span class="fb-entry-meta">${formatFileSize(entry.size)}</span>
+      `;
+      el.onclick = () => openFileFromBrowser(entry);
+    }
+
+    // Right-click context menu
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showFileContextMenu(entry, e);
+    });
+
+    content.appendChild(el);
+  });
+}
+
+function getFileIcon(ext) {
+  const mdIcon = '<svg class="fb-entry-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
+  const pdfIcon = '<svg class="fb-entry-icon file" style="color:#ef4444" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+  const docIcon = '<svg class="fb-entry-icon file" style="color:#3b82f6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+  const defaultIcon = '<svg class="fb-entry-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+
+  switch (ext) {
+    case '.md': case '.txt': case '.csv': return mdIcon;
+    case '.pdf': return pdfIcon;
+    case '.docx': case '.doc': return docIcon;
+    default: return defaultIcon;
+  }
+}
+
+// ==================== CONTEXT MENU ====================
+
+function showFileContextMenu(entry, event) {
+  // Remove any existing menu
+  const existing = document.querySelector('.fb-context-menu');
+  if (existing) existing.remove();
+
+  const menu = document.createElement('div');
+  menu.className = 'fb-context-menu';
+
+  const items = [];
+
+  if (entry.type === 'directory') {
+    items.push({ label: 'Open', action: () => browseToPath(entry.path) });
+    items.push({ label: 'Open in Finder', action: () => window.electronAPI.openInFinder(entry.path) });
+    items.push({ divider: true });
+    items.push({ label: 'New Folder Inside', action: () => createFolderInside(entry.path) });
+    items.push({ divider: true });
+    items.push({ label: 'Copy Path', action: () => copyToClipboard(entry.path) });
+  } else {
+    items.push({ label: 'Open', action: () => openFileFromBrowser(entry) });
+    items.push({ label: 'Open in Finder', action: () => window.electronAPI.openInFinder(entry.path) });
+    items.push({ divider: true });
+    items.push({ label: 'Copy Path', action: () => copyToClipboard(entry.path) });
+    items.push({ divider: true });
+    items.push({ label: 'Delete', action: () => deleteFileFromBrowser(entry), danger: true });
+  }
+
+  items.forEach(item => {
+    if (item.divider) {
+      const div = document.createElement('div');
+      div.className = 'fb-context-divider';
+      menu.appendChild(div);
+    } else {
+      const el = document.createElement('div');
+      el.className = 'fb-context-item' + (item.danger ? ' danger' : '');
+      el.textContent = item.label;
+      el.onclick = () => { menu.remove(); item.action(); };
+      menu.appendChild(el);
+    }
+  });
+
+  // Position the menu
+  menu.style.left = event.clientX + 'px';
+  menu.style.top = event.clientY + 'px';
+  document.body.appendChild(menu);
+
+  // Adjust if off-screen
+  requestAnimationFrame(() => {
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+  });
+
+  // Close on any click outside
+  const closeMenu = (e) => {
+    if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeMenu); }
+  };
+  setTimeout(() => document.addEventListener('click', closeMenu), 0);
+}
+
+async function createFolderInside(parentPath) {
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>New Folder</h3>
+      <input type="text" class="draft-confirm-instructions" placeholder="Folder name..." style="margin-bottom:16px;padding:10px 12px;" autofocus />
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate">Create</button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.main-content').appendChild(overlay);
+  const input = overlay.querySelector('input');
+  input.focus();
+
+  const submit = async () => {
+    const name = input.value.trim();
+    overlay.remove();
+    if (!name) return;
+    try {
+      await window.electronAPI.createFolder(parentPath + '/' + name);
+      browseToPath(parentPath); // refresh
+      showToast(`Folder "${name}" created`);
+    } catch (err) {
+      showToast('Failed: ' + err.message);
+    }
+  };
+
+  overlay.querySelector('.draft-confirm-generate').onclick = submit;
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') overlay.remove();
+  });
+}
+
+async function deleteFileFromBrowser(entry) {
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>Delete "${escapeHtml(entry.name)}"?</h3>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">This action cannot be undone.</p>
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate" style="background:#ef4444;border-color:#ef4444;">Delete</button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.main-content').appendChild(overlay);
+
+  overlay.querySelector('.draft-confirm-generate').onclick = async () => {
+    overlay.remove();
+    try {
+      await window.electronAPI.deleteFile(entry.path);
+      // Refresh current directory
+      const currentPath = fileBrowserPath[fileBrowserPath.length - 1] || '';
+      fileBrowserPath.pop();
+      browseToPath(currentPath);
+      showToast(`Deleted "${entry.name}"`);
+    } catch (err) {
+      showToast('Failed: ' + err.message);
+    }
+  };
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('Path copied'));
+}
+
+// ==================== KEYBOARD NAVIGATION ====================
+
+function initFileBrowserKeyboard() {
+  const panel = document.getElementById('fileBrowserPanel');
+  if (!panel) return;
+
+  panel.setAttribute('tabindex', '0');
+  panel.addEventListener('keydown', (e) => {
+    if (!panel.classList.contains('open')) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        fbSelectedIndex = Math.min(fbSelectedIndex + 1, fileBrowserEntries.length - 1);
+        highlightEntry(fbSelectedIndex);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        fbSelectedIndex = Math.max(fbSelectedIndex - 1, 0);
+        highlightEntry(fbSelectedIndex);
+        break;
+      case 'Enter':
+        if (fbSelectedIndex >= 0 && fbSelectedIndex < fileBrowserEntries.length) {
+          const entry = fileBrowserEntries[fbSelectedIndex];
+          if (entry.type === 'directory') browseToPath(entry.path);
+          else openFileFromBrowser(entry);
+        }
+        break;
+      case 'Backspace':
+        e.preventDefault();
+        fileBrowserBack();
+        break;
+      case 'Escape':
+        toggleFileBrowser();
+        break;
+    }
+  });
+}
+
+function highlightEntry(index) {
+  document.querySelectorAll('.fb-entry').forEach(el => el.classList.remove('selected'));
+  const target = document.querySelector(`.fb-entry[data-index="${index}"]`);
+  if (target) {
+    target.classList.add('selected');
+    target.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+/**
+ * Open a file from the browser — preview text files.
+ */
+async function openFileFromBrowser(entry) {
+  if (['.md', '.txt', '.json', '.yaml', '.yml'].includes(entry.extension)) {
+    try {
+      const fileData = await window.electronAPI.browseFiles(entry.path);
+      if (fileData.content !== undefined) {
+        // Show in draft preview view
+        document.getElementById('draftPreviewTitle').textContent = fileData.name;
+        document.getElementById('draftPreviewMeta').textContent = `${formatFileSize(fileData.size)} · ${fileData.extension}`;
+        const contentDiv = document.getElementById('draftPreviewContent');
+        contentDiv.classList.remove('source-mode');
+        if (fileData.extension === '.md') {
+          renderMarkdownContent(contentDiv, fileData.content);
+        } else {
+          contentDiv.classList.add('source-mode');
+          contentDiv.innerHTML = '';
+          const pre = document.createElement('pre');
+          pre.textContent = fileData.content;
+          contentDiv.appendChild(pre);
+        }
+        switchToDraftPreview();
+      }
+    } catch (err) {
+      console.error('[FileBrowser] Open file error:', err);
+    }
+  }
+}
+
+/**
+ * Update the breadcrumb navigation.
+ */
+function updateBreadcrumb(relativePath) {
+  const bc = document.getElementById('fbBreadcrumb');
+  bc.innerHTML = '';
+
+  const root = document.createElement('span');
+  root.className = 'fb-breadcrumb-item fb-breadcrumb-root';
+  root.textContent = 'EqualScalesVault';
+  root.onclick = () => browseToPath('');
+  bc.appendChild(root);
+
+  if (relativePath) {
+    const parts = relativePath.split('/').filter(Boolean);
+    let accumulated = '';
+    parts.forEach(part => {
+      accumulated += (accumulated ? '/' : '') + part;
+      const sep = document.createElement('span');
+      sep.className = 'fb-breadcrumb-sep';
+      sep.textContent = ' / ';
+      bc.appendChild(sep);
+
+      const item = document.createElement('span');
+      item.className = 'fb-breadcrumb-item';
+      item.textContent = part;
+      const pathForClick = accumulated;
+      item.onclick = () => browseToPath(pathForClick);
+      bc.appendChild(item);
+    });
+  }
+}
+
+/**
+ * Toggle file browser view mode (grid/list).
+ */
+function setFileBrowserView(mode) {
+  fileBrowserViewMode = mode;
+  localStorage.setItem('fbViewMode', mode);
+  document.getElementById('fbGridViewBtn').classList.toggle('active', mode === 'grid');
+  document.getElementById('fbListViewBtn').classList.toggle('active', mode === 'list');
+  const content = document.getElementById('fileBrowserContent');
+  content.classList.toggle('grid-view', mode === 'grid');
+}
+
+/**
+ * Populate the workspace selector dropdown with available clients.
+ */
+async function updateWorkspaceSelector() {
+  const menu = document.getElementById('workspaceMenu');
+  if (!menu) return;
+
+  // Keep the "All clients" option, clear the rest
+  const allClientsItem = menu.querySelector('[data-value=""]');
+  menu.innerHTML = '';
+  if (allClientsItem) {
+    allClientsItem.className = 'dropdown-item' + (!currentClientId ? ' selected' : '');
+    allClientsItem.onclick = () => {
+      currentClientId = null;
+      currentMatterId = null;
+      updateWorkspaceSelectorLabel();
+      loadDrafts();
+      menu.closest('.dropdown-container').classList.remove('open');
+    };
+    menu.appendChild(allClientsItem);
+  }
+
+  for (const client of allClients) {
+    // Client header item
+    const clientItem = document.createElement('div');
+    clientItem.className = 'dropdown-item' + (currentClientId === client.id && !currentMatterId ? ' selected' : '');
+    clientItem.dataset.value = client.id;
+    clientItem.innerHTML = `
+      <div class="item-row">
+        <span class="item-label">${escapeHtml(client.display_name || client.name)}</span>
+        ${currentClientId === client.id && !currentMatterId ? '<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+      </div>
+      <span class="item-desc">Client workspace</span>
+    `;
+    clientItem.onclick = () => {
+      currentClientId = client.id;
+      currentMatterId = null;
+      updateWorkspaceSelectorLabel();
+      loadDrafts();
+      menu.closest('.dropdown-container').classList.remove('open');
+    };
+    menu.appendChild(clientItem);
+
+    // Load and show matters under this client
+    if (!client._matters) {
+      try { client._matters = await window.electronAPI.listMatters(client.id); } catch { client._matters = []; }
+    }
+    if (client._matters && client._matters.length > 0) {
+      client._matters.forEach(matter => {
+        const matterItem = document.createElement('div');
+        matterItem.className = 'dropdown-item' + (currentMatterId === matter.id ? ' selected' : '');
+        matterItem.style.paddingLeft = '28px';
+        matterItem.innerHTML = `
+          <div class="item-row">
+            <span class="item-label" style="font-size:13px;">${escapeHtml(matter.name)}</span>
+            ${currentMatterId === matter.id ? '<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+          </div>
+          <span class="item-desc">${matter.matter_type || 'matter'}</span>
+        `;
+        matterItem.onclick = () => {
+          currentClientId = client.id;
+          currentMatterId = matter.id;
+          updateWorkspaceSelectorLabel();
+          loadDrafts();
+          menu.closest('.dropdown-container').classList.remove('open');
+        };
+        menu.appendChild(matterItem);
+      });
+    }
+
+    // Add matter creation option under this client
+    const addMatterItem = document.createElement('div');
+    addMatterItem.className = 'dropdown-item';
+    addMatterItem.style.paddingLeft = '28px';
+    addMatterItem.innerHTML = `<div class="item-row"><span class="item-label" style="color:var(--accent-coral);font-size:13px;">+ New matter</span></div>`;
+    addMatterItem.onclick = () => {
+      menu.closest('.dropdown-container').classList.remove('open');
+      createMatterFlowModal(client.id, client.display_name || client.name);
+    };
+    menu.appendChild(addMatterItem);
+  }
+
+  // Divider + create new client
+  const divider = document.createElement('div');
+  divider.className = 'dropdown-divider';
+  menu.appendChild(divider);
+
+  const createItem = document.createElement('div');
+  createItem.className = 'dropdown-item';
+  createItem.innerHTML = `<div class="item-row"><span class="item-label" style="color: var(--accent-coral);">+ New client</span></div>`;
+  createItem.onclick = () => {
+    menu.closest('.dropdown-container').classList.remove('open');
+    createClientFlow();
+  };
+  menu.appendChild(createItem);
+}
+
+/**
+ * Modal-based matter creation (works without the old sidebar).
+ */
+async function createMatterFlowModal(clientId, clientName) {
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>New Matter for ${escapeHtml(clientName)}</h3>
+      <input type="text" class="draft-confirm-instructions" placeholder="Matter name..." style="margin-bottom:8px;padding:10px 12px;" autofocus />
+      <select class="draft-confirm-instructions" style="margin-bottom:16px;padding:8px 12px;">
+        <option value="">Matter type...</option>
+        <option value="estate">Estate</option>
+        <option value="litigation">Litigation</option>
+        <option value="contracts">Contracts</option>
+        <option value="intake">Intake</option>
+        <option value="general">General</option>
+      </select>
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate">Create Matter</button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.main-content').appendChild(overlay);
+  const input = overlay.querySelector('input');
+  const select = overlay.querySelector('select');
+  input.focus();
+
+  const submit = async () => {
+    const name = input.value.trim();
+    const matterType = select.value || null;
+    overlay.remove();
+    if (!name) return;
+    try {
+      const matter = await window.electronAPI.createMatter(clientId, name, matterType);
+      currentClientId = clientId;
+      currentMatterId = matter.id;
+      // Refresh cached matters
+      const client = allClients.find(c => c.id === clientId);
+      if (client) client._matters = await window.electronAPI.listMatters(clientId);
+      updateWorkspaceSelectorLabel();
+      loadDrafts();
+      showToast(`Matter "${name}" created`);
+    } catch (err) {
+      showToast('Failed: ' + err.message);
+    }
+  };
+
+  overlay.querySelector('.draft-confirm-generate').onclick = submit;
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') overlay.remove();
+  });
+}
+
+function updateWorkspaceSelectorLabel() {
+  const label = document.getElementById('workspaceSelectorLabel');
+  if (!label) return;
+
+  if (currentMatterId && currentClientId) {
+    const client = allClients.find(c => c.id === currentClientId);
+    const matter = client?._matters?.find(m => m.id === currentMatterId);
+    const clientName = client ? (client.display_name || client.name) : '';
+    const matterName = matter ? matter.name : '';
+    label.textContent = matterName ? `${clientName} / ${matterName}` : clientName;
+  } else if (currentClientId) {
+    const client = allClients.find(c => c.id === currentClientId);
+    label.textContent = client ? (client.display_name || client.name) : 'Client';
+  } else {
+    label.textContent = 'Work in a client';
+  }
+}
+
+/**
+ * Render recent activity on the home screen.
+ */
+function renderHomeActivity() {
+  const list = document.getElementById('homeActivityList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const sortedChats = [...allChats].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const showAll = list.dataset.showAll === 'true';
+  const chatsToShow = showAll ? sortedChats : sortedChats.slice(0, 10);
+
+  if (sortedChats.length === 0) {
+    list.innerHTML = '<div class="home-activity-empty">No recent chats</div>';
+    return;
+  }
+
+  chatsToShow.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'home-activity-item';
+    const timeAgo = getTimeAgo(chat.updatedAt);
+    item.innerHTML = `
+      <div class="home-activity-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <div class="home-activity-info">
+        <div class="home-activity-title">${escapeHtml(chat.title || 'New chat')}</div>
+        <div class="home-activity-meta">${timeAgo}</div>
+      </div>
+    `;
+    item.onclick = () => switchToChat(chat.id);
+    list.appendChild(item);
+  });
+
+  if (sortedChats.length > 10 && !showAll) {
+    const showMore = document.createElement('div');
+    showMore.className = 'home-activity-item';
+    showMore.style.justifyContent = 'center';
+    showMore.style.color = 'var(--accent-coral)';
+    showMore.style.fontSize = '13px';
+    showMore.textContent = `Show all ${sortedChats.length} chats`;
+    showMore.onclick = () => { list.dataset.showAll = 'true'; renderHomeActivity(); };
+    list.appendChild(showMore);
+  }
+}
+
+function getTimeAgo(timestamp) {
+  if (!timestamp) return '';
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 // ==================== WORKSPACE NAVIGATION (Phase 2) ====================
@@ -494,47 +1216,53 @@ function selectMatter(client, matter) {
  * Prompt user to create a new client, then refresh nav.
  */
 async function createClientFlow() {
-  // Show inline input form in the workspace nav
-  const nav = document.getElementById('workspaceNav');
-  if (!nav || nav.querySelector('.inline-create-form')) return; // prevent double forms
+  // Use overlay modal for client creation (works regardless of sidebar state)
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
 
-  const form = document.createElement('div');
-  form.className = 'inline-create-form';
-  form.innerHTML = `
-    <input type="text" class="inline-create-input" placeholder="Client name..." autofocus />
-    <div class="inline-create-actions">
-      <button class="inline-create-submit" title="Create">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      </button>
-      <button class="inline-create-cancel" title="Cancel">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>New Client</h3>
+      <input type="text" class="draft-confirm-instructions" placeholder="Client name..." style="margin-bottom: 16px; padding: 10px 12px;" autofocus />
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate">Create Client</button>
+      </div>
     </div>
   `;
-  nav.prepend(form);
+  document.querySelector('.main-content').appendChild(overlay);
 
-  const input = form.querySelector('input');
+  const input = overlay.querySelector('input');
   input.focus();
 
-  const submitClient = async () => {
+  const submit = async () => {
     const name = input.value.trim();
-    if (!name) { form.remove(); return; }
+    overlay.remove();
+    if (!name) return;
     try {
       const client = await window.electronAPI.createClient(name);
       console.log('[Workspace] Created client:', client.name);
-      expandedClients.add(client.id);
+      currentClientId = client.id;
+      currentMatterId = null;
       await loadClients();
+      updateWorkspaceSelector();
+      updateWorkspaceSelectorLabel();
+      renderHomeActivity();
+      showToast(`Client "${client.name}" created`);
     } catch (err) {
       console.error('[Workspace] Failed to create client:', err);
+      showToast('Failed to create client: ' + err.message);
     }
-    form.remove();
   };
 
-  form.querySelector('.inline-create-submit').onclick = submitClient;
-  form.querySelector('.inline-create-cancel').onclick = () => form.remove();
+  overlay.querySelector('.draft-confirm-generate').onclick = submit;
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') submitClient();
-    if (e.key === 'Escape') form.remove();
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') overlay.remove();
   });
 }
 
@@ -1300,6 +2028,24 @@ function setupEventListeners() {
   const addClientBtn = document.getElementById('addClientBtn');
   if (addClientBtn) addClientBtn.addEventListener('click', createClientFlow);
 
+  // Finder-first file actions
+  const openFinderBtn = document.getElementById('openInFinderBtn');
+  if (openFinderBtn) openFinderBtn.addEventListener('click', openContextualFinder);
+  const chatFinderBtn = document.getElementById('chatOpenInFinderBtn');
+  if (chatFinderBtn) chatFinderBtn.addEventListener('click', openContextualFinder);
+
+  // Workspace selector dropdown
+  const wsBtn = document.getElementById('workspaceSelectorBtn');
+  if (wsBtn) {
+    wsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dropdown = document.getElementById('workspaceDropdown');
+      closeOtherDropdowns(dropdown);
+      dropdown.classList.toggle('open');
+      updateWorkspaceSelector();
+    });
+  }
+
   // Collapsible sidebar sections
   document.querySelectorAll('.workspace-section-header[data-section]').forEach(header => {
     header.style.cursor = 'pointer';
@@ -1339,12 +2085,12 @@ function setupEventListeners() {
   if (draftReviseBtn) draftReviseBtn.addEventListener('click', reviseDraft);
 
   // Right sidebar toggle
-  sidebarToggle.addEventListener('click', toggleSidebar);
-  rightSidebarExpand.addEventListener('click', toggleSidebar);
+  if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+  if (rightSidebarExpand) rightSidebarExpand.addEventListener('click', toggleSidebar);
 
-  // Left sidebar toggle (chat history)
-  leftSidebarToggle.addEventListener('click', toggleLeftSidebar);
-  leftSidebarExpand.addEventListener('click', toggleLeftSidebar);
+  // Left sidebar toggle (chat history) — may not exist in new layout
+  if (leftSidebarToggle) leftSidebarToggle.addEventListener('click', toggleLeftSidebar);
+  if (leftSidebarExpand) leftSidebarExpand.addEventListener('click', toggleLeftSidebar);
 
   // File attachment buttons
   const homeAttachBtn = document.getElementById('homeAttachBtn');
@@ -2193,6 +2939,7 @@ window.startNewChat = function() {
 
   // Update chat history display
   renderChatHistory();
+  renderHomeActivity();
 
   // Update send button states to ensure they're enabled
   updateSendButton(homeInput, homeSendBtn);

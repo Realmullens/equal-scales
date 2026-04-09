@@ -11,7 +11,7 @@ import path from 'path';
 import { getTemplateWithBody } from './template-service.js';
 import { gatherContext, formatContextForPrompt } from './context-service.js';
 import { createDraft, listDraftVersions } from '../storage/repositories/drafts.js';
-import { matterDraftsDir, clientDir } from '../storage/paths.js';
+// Paths are resolved from stored root_path/matter_path, not from path helpers
 import { getClientById } from '../storage/repositories/clients.js';
 import { getMatterById } from '../storage/repositories/matters.js';
 

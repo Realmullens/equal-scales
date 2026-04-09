@@ -23,39 +23,53 @@ const TEMPLATES_DIR = path.join(VAULT_ROOT, 'templates');
 const CLIENTS_DIR = path.join(VAULT_ROOT, 'clients');
 
 /**
- * Build a deterministic directory name from an id and slug.
- * Example: buildDirName('client_001', 'jane-doe') => 'client_001-jane-doe'
+ * Sanitize a name for use as a folder name.
+ * Keeps it human-readable in Finder.
  */
-function buildDirName(id, slug) {
-  return `${id}-${slug}`;
+function sanitizeFolderName(name) {
+  return name.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Build a human-readable directory name from a display name.
+ * If a collision exists, appends a short numeric suffix.
+ * Example: "Jane Doe" or "Jane Doe (2)"
+ */
+function buildClientDirName(name) {
+  return sanitizeFolderName(name);
+}
+
+function buildMatterDirName(name) {
+  return sanitizeFolderName(name);
 }
 
 /**
  * Resolve the filesystem path for a client directory.
+ * Uses the human-readable client name as the folder name.
  */
-function clientDir(clientId, clientSlug) {
-  return path.join(CLIENTS_DIR, buildDirName(clientId, clientSlug));
+function clientDir(clientName) {
+  return path.join(CLIENTS_DIR, buildClientDirName(clientName));
 }
 
 /**
  * Resolve the filesystem path for a matter directory under a client.
  */
-function matterDir(clientId, clientSlug, matterId, matterSlug) {
-  return path.join(clientDir(clientId, clientSlug), 'matters', buildDirName(matterId, matterSlug));
+function matterDir(clientDirPath, matterName) {
+  return path.join(clientDirPath, 'matters', buildMatterDirName(matterName));
 }
 
 /**
  * Resolve the drafts directory for a matter.
  */
-function matterDraftsDir(clientId, clientSlug, matterId, matterSlug) {
-  return path.join(matterDir(clientId, clientSlug, matterId, matterSlug), 'drafts');
+function matterDraftsDir(matterDirPath) {
+  return path.join(matterDirPath, 'drafts');
 }
 
 /**
  * Resolve the source-documents directory for a matter.
  */
-function matterSourceDocsDir(clientId, clientSlug, matterId, matterSlug) {
-  return path.join(matterDir(clientId, clientSlug, matterId, matterSlug), 'source-documents');
+function matterSourceDocsDir(matterDirPath) {
+  return path.join(matterDirPath, 'source-documents');
 }
 
 /**
@@ -70,7 +84,7 @@ export {
   DB_PATH,
   TEMPLATES_DIR,
   CLIENTS_DIR,
-  buildDirName,
+  sanitizeFolderName,
   clientDir,
   matterDir,
   matterDraftsDir,

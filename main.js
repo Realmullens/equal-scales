@@ -1,5 +1,6 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
+const os = require('os');
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -55,6 +56,35 @@ function createWindow() {
     }
   });
 }
+
+// IPC handlers
+const VAULT_ROOT = path.join(os.homedir(), 'EqualScalesVault');
+
+function isInsideVault(fullPath) {
+  const normalized = path.resolve(fullPath);
+  return normalized === VAULT_ROOT || normalized.startsWith(VAULT_ROOT + path.sep);
+}
+
+// Reveal a file in Finder (selects it in the parent folder)
+ipcMain.handle('open-in-finder', (event, targetPath) => {
+  // Support both relative (to vault) and absolute paths
+  const fullPath = path.isAbsolute(targetPath)
+    ? path.resolve(targetPath)
+    : path.resolve(VAULT_ROOT, targetPath);
+  if (!isInsideVault(fullPath)) return { error: 'Access denied' };
+  shell.showItemInFolder(fullPath);
+  return { success: true };
+});
+
+// Open a folder directly in Finder
+ipcMain.handle('open-folder-in-finder', (event, targetPath) => {
+  const fullPath = path.isAbsolute(targetPath)
+    ? path.resolve(targetPath)
+    : path.resolve(VAULT_ROOT, targetPath);
+  if (!isInsideVault(fullPath)) return { error: 'Access denied' };
+  shell.openPath(fullPath);
+  return { success: true };
+});
 
 // App lifecycle
 app.on('ready', () => {
