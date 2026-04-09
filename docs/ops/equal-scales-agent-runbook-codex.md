@@ -148,11 +148,14 @@ Stop and escalate when:
 ## Ideal handshake with Claude Code
 
 The default handoff should be:
-1. Claude Code defines or refines the slice
-2. Codex executes the slice
-3. Claude Code reviews the implementation for product/spec quality
-4. Codex applies targeted fixes
-5. live loop doc is updated
+1. Claude Code defines or refines the slice.
+2. The implementation agent executes the slice.
+3. Claude Code reviews for product and spec compliance.
+4. Codex performs an explicit review pass after Claude's part or after Claude's review conclusions.
+5. The implementation agent applies targeted fixes.
+6. live loop doc is updated.
+
+When Claude Code is the implementation agent for a frontend-heavy slice, Codex should still review the work before the slice is considered complete.
 
 ---
 

@@ -12,6 +12,7 @@
   "description": "Equal Scales - AI Coworker Built By Attorneys for Attorneys",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
+    "@huggingface/transformers": "^4.0.1",
     "@opencode-ai/sdk": "latest",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

@@ -21,9 +21,9 @@ If you do not update this file, the loop is broken.
 - Program: Equal Scales
 - Product mode: matter-centered legal workspace
 - Execution mode: spec-driven agentic development loop
-- Primary agents:
-  - Claude Code = planner / reviewer / frontend lead
-  - Codex = executor / backend lead
+- Primary long-run mode:
+  - Claude Code = primary planning and implementation agent across consecutive bounded slices
+  - Codex = review agent after each meaningful implementation part/checkpoint
 - Human escalation target: Bailey
 - Last updated: 2026-04-09
 
@@ -159,10 +159,15 @@ Before coding, rewrite the current task in terms of:
 ### Rule 3: Verify before updating status
 Do not mark a task done without running the relevant checks.
 
-### Rule 4: Update docs as part of the work
+### Rule 4: Require cross-agent review after each implementation part
+After Claude Code completes an implementation-heavy part, Codex must perform a review pass before the work is considered complete.
+After Codex completes an implementation-heavy part, Claude Code should perform a product/spec review when the slice is design-sensitive or architecture-sensitive.
+Do not treat single-agent self-approval as enough for important slices.
+
+### Rule 5: Update docs as part of the work
 If architecture, sequencing, or operating rules change, update the relevant docs before ending.
 
-### Rule 5: Escalate only real product decisions
+### Rule 6: Escalate only real product decisions
 Do not ask Bailey routine implementation questions that the docs already answer.
 Escalate only for true ambiguity, design forks, or licensing concerns.
 

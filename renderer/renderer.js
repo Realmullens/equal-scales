@@ -359,6 +359,264 @@ function renderChatHistory() {
   });
 }
 
+// ==================== VOICE INPUT (Local Whisper) ====================
+
+let whisperReady = false;
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let selectedAudioDeviceId = localStorage.getItem('voiceDeviceId') || 'default';
+let holdToRecord = localStorage.getItem('voiceHoldToRecord') !== 'false'; // default true
+
+/**
+ * Transcribe audio via the main process Whisper pipeline (IPC bridge).
+ * Model downloads automatically on first use (~40MB) and caches.
+ */
+async function transcribeAudio(audioData) {
+  if (!whisperReady) {
+    showToast('Loading speech model (first time)...');
+  }
+  const result = await window.electronAPI.transcribeAudio(audioData);
+  whisperReady = true;
+  if (result.error) throw new Error(result.error);
+  return result.text || '';
+}
+
+/**
+ * Start voice recording with the selected audio device.
+ */
+async function startVoiceRecording(targetInput) {
+  if (isRecording) return;
+
+  try {
+    const constraints = { audio: selectedAudioDeviceId === 'default'
+      ? true
+      : { deviceId: { exact: selectedAudioDeviceId } }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    isRecording = true;
+    audioChunks = [];
+
+    document.querySelectorAll('.voice-widget').forEach(w => w.classList.add('recording'));
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      document.querySelectorAll('.voice-widget').forEach(w => w.classList.remove('recording'));
+      document.querySelectorAll('.voice-btn').forEach(b => b.classList.add('loading'));
+
+      try {
+        // Convert WebM to PCM Float32 via AudioContext decoding
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioCtx = new AudioContext({ sampleRate: 16000 });
+        const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+        const pcmData = decoded.getChannelData(0); // mono, 16kHz
+        audioCtx.close();
+
+        // Send PCM data to main process for Whisper transcription
+        const text = await transcribeAudio(pcmData.buffer);
+
+        if (text && text.trim() && targetInput) {
+          const trimmed = text.trim();
+          const start = targetInput.selectionStart;
+          const end = targetInput.selectionEnd;
+          const before = targetInput.value.substring(0, start);
+          const after = targetInput.value.substring(end);
+          const spaceBefore = before && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : '';
+          targetInput.value = before + spaceBefore + trimmed + after;
+          targetInput.selectionStart = targetInput.selectionEnd = start + spaceBefore.length + trimmed.length;
+          targetInput.dispatchEvent(new Event('input'));
+          targetInput.focus();
+          showToast(trimmed.length > 60 ? trimmed.substring(0, 60) + '...' : trimmed);
+        }
+      } catch (err) {
+        console.error('[Voice] Transcription error:', err);
+        showToast('Transcription failed: ' + err.message);
+      } finally {
+        document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('loading'));
+      }
+    };
+
+    mediaRecorder.start();
+  } catch (err) {
+    console.error('[Voice] Microphone error:', err);
+    showToast('Microphone access denied');
+    isRecording = false;
+    document.querySelectorAll('.voice-widget').forEach(w => w.classList.remove('recording'));
+  }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder && isRecording) {
+    isRecording = false;
+    mediaRecorder.stop();
+  }
+}
+
+/**
+ * Show the audio source selection dropdown.
+ */
+async function showAudioSourceMenu(widget) {
+  // Close any existing menu
+  const existing = document.querySelector('.voice-source-menu');
+  if (existing) { existing.remove(); widget.classList.remove('source-open'); return; }
+
+  widget.classList.add('source-open');
+
+  // Enumerate audio input devices
+  let devices = [];
+  try {
+    // Trigger permission prompt, then immediately stop the probe stream
+    const probeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    probeStream.getTracks().forEach(t => t.stop());
+    const all = await navigator.mediaDevices.enumerateDevices();
+    devices = all.filter(d => d.kind === 'audioinput');
+  } catch (err) {
+    showToast('Cannot access audio devices');
+    widget.classList.remove('source-open');
+    return;
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'voice-source-menu';
+
+  // Header with mic icon and dot
+  menu.innerHTML = `
+    <div class="voice-source-menu-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+      <span class="voice-source-dot"></span>
+    </div>
+  `;
+
+  // Device list
+  devices.forEach(device => {
+    const item = document.createElement('div');
+    item.className = 'voice-source-item';
+    const isSelected = device.deviceId === selectedAudioDeviceId ||
+      (selectedAudioDeviceId === 'default' && device.deviceId === 'default');
+    item.innerHTML = `
+      <span class="source-name">${device.label || 'Default'}</span>
+      ${isSelected ? '<span class="check">&#10003;</span>' : ''}
+    `;
+    item.onclick = () => {
+      selectedAudioDeviceId = device.deviceId;
+      localStorage.setItem('voiceDeviceId', device.deviceId);
+      menu.remove();
+      widget.classList.remove('source-open');
+    };
+    menu.appendChild(item);
+  });
+
+  // Divider + hold-to-record toggle
+  const divider = document.createElement('div');
+  divider.className = 'voice-source-divider';
+  menu.appendChild(divider);
+
+  const toggle = document.createElement('div');
+  toggle.className = 'voice-source-toggle';
+  toggle.innerHTML = `
+    <div class="voice-source-toggle-left">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+      </svg>
+      <span>Hold to record</span>
+    </div>
+    <div class="toggle-switch ${holdToRecord ? 'active' : ''}" id="holdToRecordToggle"></div>
+  `;
+  toggle.querySelector('.toggle-switch').onclick = (e) => {
+    e.stopPropagation();
+    holdToRecord = !holdToRecord;
+    localStorage.setItem('voiceHoldToRecord', holdToRecord);
+    e.target.classList.toggle('active', holdToRecord);
+    // Update tooltips
+    document.querySelectorAll('.voice-tooltip').forEach(t => {
+      t.textContent = holdToRecord ? 'Press and hold to record' : 'Click to record';
+    });
+  };
+  menu.appendChild(toggle);
+
+  widget.appendChild(menu);
+
+  // Close on outside click
+  const closeMenu = (e) => {
+    if (!menu.contains(e.target) && !e.target.closest('.voice-source-btn')) {
+      menu.remove();
+      widget.classList.remove('source-open');
+      document.removeEventListener('click', closeMenu);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeMenu), 0);
+}
+
+/**
+ * Wire voice widget events: hold-to-record or click-to-toggle.
+ */
+function setupVoiceWidget(widget, targetInput) {
+  const voiceBtn = widget.querySelector('.voice-btn');
+  const sourceBtn = widget.querySelector('.voice-source-btn');
+
+  // Source selector
+  sourceBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showAudioSourceMenu(widget);
+  });
+
+  // Hold-to-record: mousedown starts, mouseup stops
+  // Click-to-toggle: click starts, click again stops
+  let holdTimer = null;
+  let isHolding = false;
+
+  voiceBtn.addEventListener('mousedown', () => {
+    if (isRecording) return;
+    if (holdToRecord) {
+      isHolding = true;
+      holdTimer = setTimeout(() => {
+        // Only start if still holding after a brief delay (avoid accidental taps)
+        if (isHolding) startVoiceRecording(targetInput);
+      }, 150);
+    }
+  });
+
+  voiceBtn.addEventListener('mouseup', () => {
+    if (holdToRecord && isHolding) {
+      isHolding = false;
+      clearTimeout(holdTimer);
+      if (isRecording) stopVoiceRecording();
+    }
+  });
+
+  voiceBtn.addEventListener('mouseleave', () => {
+    if (holdToRecord && isHolding) {
+      isHolding = false;
+      clearTimeout(holdTimer);
+      if (isRecording) stopVoiceRecording();
+    }
+  });
+
+  voiceBtn.addEventListener('click', () => {
+    if (!holdToRecord) {
+      if (isRecording) stopVoiceRecording();
+      else startVoiceRecording(targetInput);
+    }
+  });
+
+  // Update tooltip based on mode
+  const tooltip = widget.querySelector('.voice-tooltip');
+  if (tooltip) {
+    tooltip.textContent = holdToRecord ? 'Press and hold to record' : 'Click to record';
+  }
+}
+
 // ==================== FINDER-FIRST FILE ACTIONS ====================
 
 /**
@@ -2027,6 +2285,12 @@ function setupEventListeners() {
   // Add client button
   const addClientBtn = document.getElementById('addClientBtn');
   if (addClientBtn) addClientBtn.addEventListener('click', createClientFlow);
+
+  // Voice input widgets
+  const homeVoiceWidget = document.getElementById('homeVoiceWidget');
+  if (homeVoiceWidget) setupVoiceWidget(homeVoiceWidget, homeInput);
+  const chatVoiceWidget = document.getElementById('chatVoiceWidget');
+  if (chatVoiceWidget) setupVoiceWidget(chatVoiceWidget, messageInput);
 
   // Finder-first file actions
   const openFinderBtn = document.getElementById('openInFinderBtn');

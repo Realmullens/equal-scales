@@ -304,20 +304,22 @@ The loop should only advance when the right tests for that layer pass.
 
 ## 8. How to combine Codex and Claude Code effectively
 
-## Pattern A: Claude plans, Codex executes, Claude reviews
+## Pattern A: Claude plans, Codex executes, Claude reviews, Codex reviews back
 Use when:
 - feature is medium/large
 - frontend or interaction shape matters
 - architecture could drift
+- you want both implementation and independent review pressure
 
 Flow:
 1. Claude Code reads docs and creates/revises the plan for the next slice.
-2. Codex implements the slice.
+2. Codex implements the slice, or Claude implements when the slice is frontend-heavy.
 3. Claude Code reviews for spec compliance and UI/product quality.
-4. Codex fixes review findings.
-5. living loop doc is updated.
+4. Codex performs an explicit review pass on Claude's implementation or on Claude's review conclusions.
+5. The implementation agent applies fixes.
+6. living loop doc is updated.
 
-This is my favorite default for Equal Scales.
+This is my favorite default for Equal Scales because it creates a two-agent review loop instead of a single-agent self-approval loop.
 
 ## Pattern B: Codex executes backend track while Claude executes frontend track
 Use when:
@@ -401,20 +403,22 @@ If we want to operationalize this immediately, I would create these files next:
 If I were running this with your subscriptions, I would do this:
 
 ### Primary workflow
-- use Claude Code as planner/reviewer/frontend lead
-- use Codex as executor/backend lead
+- use Claude Code as the primary long-run agent
+- let Claude Code plan and implement bounded slices continuously from the live loop doc
+- use Codex as the standing review agent after each meaningful implementation part or checkpoint
 - keep one living loop doc in the repo
 - keep one outcome-tests doc in the repo
 - require every loop to update those docs before ending
 
 ### Practical flow
 1. We define milestone and acceptance tests.
-2. Claude Code creates or updates the implementation slice plan.
-3. Codex executes the next bounded task list.
-4. Claude Code reviews the changes against the docs and product shape.
-5. Codex applies fixes.
-6. The loop doc is updated with status and next task.
-7. The next run starts from that doc automatically.
+2. Claude Code starts from the live loop doc and selects the current bounded slice.
+3. Claude Code plans and implements that slice.
+4. Claude Code verifies the slice and updates the live loop doc.
+5. Codex performs a formal review pass after Claude's implementation part.
+6. Claude Code applies review fixes if needed.
+7. Claude Code advances to the next bounded slice only if the loop doc, milestone, and verification all permit it.
+8. The next run starts from the updated live loop doc automatically.
 
 ### Why this is the best fit
 Because it balances:

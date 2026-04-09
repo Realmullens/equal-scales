@@ -86,6 +86,30 @@ ipcMain.handle('open-folder-in-finder', (event, targetPath) => {
   return { success: true };
 });
 
+// Whisper speech-to-text via transformers.js (runs in main process)
+let whisperPipeline = null;
+
+ipcMain.handle('transcribe-audio', async (event, audioBuffer) => {
+  try {
+    if (!whisperPipeline) {
+      const { pipeline } = await import('@huggingface/transformers');
+      whisperPipeline = await pipeline(
+        'automatic-speech-recognition',
+        'onnx-community/whisper-tiny.en',
+        { dtype: 'q8' }
+      );
+    }
+
+    // audioBuffer is an ArrayBuffer from the renderer
+    const float32 = new Float32Array(audioBuffer);
+    const result = await whisperPipeline(float32);
+    return { text: result.text || '' };
+  } catch (err) {
+    console.error('[Whisper] Transcription error:', err);
+    return { error: err.message };
+  }
+});
+
 // App lifecycle
 app.on('ready', () => {
   console.log('Electron app ready');

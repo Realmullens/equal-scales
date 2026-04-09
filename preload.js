@@ -244,6 +244,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return response.json();
   },
 
+  // Transcribe audio using local Whisper model
+  transcribeAudio: async (audioBuffer) => {
+    return ipcRenderer.invoke('transcribe-audio', audioBuffer);
+  },
+
   // Reveal a file/folder in Finder (selects it in parent)
   openInFinder: async (targetPath) => {
     return ipcRenderer.invoke('open-in-finder', targetPath);
