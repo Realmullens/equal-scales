@@ -175,6 +175,20 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Phase 6 — Source Documents + Review Groundwork)
+- **Result:** ALL TESTS PASSED (28/28)
+- **What was built:**
+  - source_documents table in SQLite (matter-scoped, stores filename, path, type, size, extracted text)
+  - Source document CRUD repository + REST routes (attach, list, get, delete)
+  - Attach flow: copies file into matter's source-documents/ vault directory
+  - Text extraction for text-based files (.txt, .md, .csv, etc.)
+  - Context service updated: source documents included in drafting context assembly
+  - Binary files tracked but excluded from text context (no garbled data)
+  - Preload bridges: attachSourceDocument, listSourceDocuments, deleteSourceDocument
+- **Verification:** `cd server && node tests/verify-source-documents.js`
+- **Full suite:** 9 test suites, 417 total tests, all passing
+- **Template-first implementation spec: ALL 7 PHASES COMPLETE**
+
 ### 2026-04-09 (Milestone 3 Slice 03)
 - **Slice:** Document API Integration + M3 Completion
 - **Result:** ALL TESTS PASSED (41/41 new + 348 existing = 389 total)
@@ -353,7 +367,10 @@ Milestone 3 complete (3 slices, 68 new tests). Document workspace established wi
 matter-scoped CRUD, and Electron window integration. 389 total tests across all milestones.
 
 Milestone 4 (collaboration) deferred — not needed for single-user MVP.
-Next priorities: source document support, editor polish, or DOCX/PDF export — per Bailey's direction.
+Template-first implementation spec (Phases 0-6) is now COMPLETE.
+All 7 phases implemented and verified with 417 automated tests across 9 suites.
+
+Next priorities per Bailey's direction: editor polish, DOCX/PDF export, or UX improvements.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened

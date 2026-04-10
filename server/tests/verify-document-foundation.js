@@ -31,9 +31,11 @@ initDatabase();
 const db = getDb();
 
 // Clean
+db.prepare("DELETE FROM source_documents").run();
 db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM messages").run();
 db.prepare("DELETE FROM conversations").run();
+db.prepare("DELETE FROM source_documents").run();
 db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM drafts").run();
 db.prepare("DELETE FROM matters").run();
@@ -183,6 +185,7 @@ assert(getDocumentById(doc2.id) === null, 'Temp doc gone after delete');
 // CLEANUP
 // ==============================
 section('Cleanup');
+db.prepare("DELETE FROM source_documents").run();
 db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM matters").run();
 db.prepare("DELETE FROM clients").run();

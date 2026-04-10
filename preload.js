@@ -277,6 +277,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return response.json();
   },
 
+  // Source document operations
+  attachSourceDocument: async (matterId, sourcePath, description = null) => {
+    const response = await fetch(`${SERVER_URL}/api/source-documents/attach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matterId, sourcePath, description })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to attach');
+    return response.json();
+  },
+
+  listSourceDocuments: async (matterId) => {
+    const response = await fetch(`${SERVER_URL}/api/source-documents?matterId=${encodeURIComponent(matterId)}`);
+    if (!response.ok) throw new Error('Failed to list source documents');
+    return response.json();
+  },
+
+  deleteSourceDocument: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/source-documents/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete');
+    return response.json();
+  },
+
   // Navigation search — find clients, matters, drafts by name
   searchWorkspace: async (query) => {
     const response = await fetch(`${SERVER_URL}/api/navigate/search?q=${encodeURIComponent(query)}`);

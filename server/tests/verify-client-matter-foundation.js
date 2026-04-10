@@ -76,6 +76,7 @@ section('AC2: Client creation');
 // Clean test data first
 db2.prepare("DELETE FROM messages").run();
 db2.prepare("DELETE FROM conversations").run();
+db2.prepare("DELETE FROM source_documents").run();
 db2.prepare("DELETE FROM documents").run();
 db2.prepare("DELETE FROM drafts").run();
 db2.prepare("DELETE FROM matters").run();
@@ -186,6 +187,7 @@ section('AC5: Verification complete');
 // Clean up test data
 db2.prepare("DELETE FROM messages").run();
 db2.prepare("DELETE FROM conversations").run();
+db2.prepare("DELETE FROM source_documents").run();
 db2.prepare("DELETE FROM documents").run();
 db2.prepare("DELETE FROM drafts").run();
 db2.prepare("DELETE FROM matters").run();

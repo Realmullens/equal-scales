@@ -29,6 +29,7 @@ const db = getDb();
 // Clean test data
 db.prepare("DELETE FROM messages").run();
 db.prepare("DELETE FROM conversations").run();
+db.prepare("DELETE FROM source_documents").run();
 db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM drafts").run();
 db.prepare("DELETE FROM templates").run();
@@ -333,6 +334,7 @@ section('Cleanup');
 
 db.prepare("DELETE FROM messages").run();
 db.prepare("DELETE FROM conversations").run();
+db.prepare("DELETE FROM source_documents").run();
 db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM drafts").run();
 db.prepare("DELETE FROM templates").run();

@@ -77,6 +77,19 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS source_documents (
+  id            TEXT PRIMARY KEY,
+  matter_id     TEXT NOT NULL REFERENCES matters(id),
+  filename      TEXT NOT NULL,
+  file_path     TEXT NOT NULL,                   -- absolute path in vault source-documents dir
+  file_type     TEXT,                            -- pdf, docx, txt, md, etc.
+  file_size     INTEGER,                         -- bytes
+  description   TEXT,
+  content_text  TEXT,                            -- extracted text content (for context assembly)
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS documents (
   id            TEXT PRIMARY KEY,
   matter_id     TEXT NOT NULL REFERENCES matters(id),
@@ -96,3 +109,4 @@ CREATE INDEX IF NOT EXISTS idx_conversations_client ON conversations(client_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_matter ON conversations(matter_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_documents_matter ON documents(matter_id);
+CREATE INDEX IF NOT EXISTS idx_source_documents_matter ON source_documents(matter_id);

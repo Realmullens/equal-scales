@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { getClientById } from '../storage/repositories/clients.js';
 import { getMatterById } from '../storage/repositories/matters.js';
+import { listSourceDocumentsByMatter } from '../storage/repositories/source-documents.js';
 
 /**
  * Gather context for a draft generation prompt.
@@ -42,6 +43,10 @@ function gatherContext({ clientId, matterId = null }) {
       context.files.facts = readFileIfExists(path.join(matter.matter_path, 'facts.md'));
       context.files.tasks = readFileIfExists(path.join(matter.matter_path, 'tasks.md'));
     }
+
+    // Include source document text content for context assembly
+    const sourceDocs = listSourceDocumentsByMatter(matterId);
+    context.sourceDocuments = sourceDocs.filter(d => d.content_text);
   }
 
   return context;
@@ -74,6 +79,14 @@ function formatContextForPrompt(context) {
     }
     if (context.files.tasks) {
       parts.push(`### Tasks\n${context.files.tasks}`);
+    }
+  }
+
+  // Include source document content
+  if (context.sourceDocuments && context.sourceDocuments.length > 0) {
+    parts.push(`## Source Documents (${context.sourceDocuments.length})`);
+    for (const doc of context.sourceDocuments) {
+      parts.push(`### ${doc.filename}${doc.description ? ' — ' + doc.description : ''}\n${doc.content_text}`);
     }
   }
 
