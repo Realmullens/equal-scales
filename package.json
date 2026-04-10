@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "NODE_ENV=development electron .",
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:document": "vite build",
+    "dev:document": "vite dev"
   },
   "author": "",
   "license": "ISC",
@@ -14,12 +16,20 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.7",
     "@huggingface/transformers": "^4.0.1",
     "@opencode-ai/sdk": "latest",
+    "@tiptap/core": "^3.22.3",
+    "@tiptap/extension-underline": "^3.22.3",
+    "@tiptap/react": "^3.22.3",
+    "@tiptap/starter-kit": "^3.22.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
     "electron": "^39.2.7",
-    "electron-reload": "^2.0.0-alpha.1"
+    "electron-reload": "^2.0.0-alpha.1",
+    "vite": "^8.0.8"
   }
 }

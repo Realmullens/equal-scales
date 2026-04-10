@@ -249,6 +249,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('transcribe-audio', audioBuffer);
   },
 
+  // Document CRUD
+  createDocument: async (matterId, title) => {
+    const response = await fetch(`${SERVER_URL}/api/documents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matterId, title })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || 'Failed to create document');
+    return response.json();
+  },
+
+  listDocuments: async (matterId) => {
+    const response = await fetch(`${SERVER_URL}/api/documents?matterId=${encodeURIComponent(matterId)}`);
+    if (!response.ok) throw new Error('Failed to list documents');
+    return response.json();
+  },
+
+  getDocument: async (id) => {
+    const response = await fetch(`${SERVER_URL}/api/documents/${id}`);
+    if (!response.ok) throw new Error('Document not found');
+    return response.json();
+  },
+
   // Navigation search — find clients, matters, drafts by name
   searchWorkspace: async (query) => {
     const response = await fetch(`${SERVER_URL}/api/navigate/search?q=${encodeURIComponent(query)}`);

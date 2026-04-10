@@ -77,6 +77,16 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS documents (
+  id            TEXT PRIMARY KEY,
+  matter_id     TEXT NOT NULL REFERENCES matters(id),
+  title         TEXT NOT NULL,
+  content_json  TEXT,                            -- Tiptap/ProseMirror JSON state
+  status        TEXT NOT NULL DEFAULT 'draft',   -- draft | active | archived
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Indexes for common lookups
 CREATE INDEX IF NOT EXISTS idx_matters_client ON matters(client_id);
 CREATE INDEX IF NOT EXISTS idx_drafts_client ON drafts(client_id);
@@ -85,3 +95,4 @@ CREATE INDEX IF NOT EXISTS idx_drafts_template ON drafts(template_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_client ON conversations(client_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_matter ON conversations(matter_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_documents_matter ON documents(matter_id);

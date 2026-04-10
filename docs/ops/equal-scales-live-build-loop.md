@@ -175,6 +175,30 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 3 Slice 01)
+- **Slice:** Document Workspace Foundation (OUTCOME-C1, C2, C3)
+- **Result:** ALL TESTS PASSED (27/27)
+- **What was built:**
+  - React + Vite build system added to the project
+  - Tiptap/ProseMirror editor with StarterKit + Underline extensions
+  - Document workspace React components (DocumentWorkspace, DocumentEditor)
+  - Toolbar: bold, italic, underline, H1-H3, bullet/ordered list, blockquote
+  - Auto-save after 2 seconds of inactivity
+  - Documents table in SQLite schema (matter-scoped)
+  - Document CRUD repository + REST routes
+  - Preload bridge for document operations
+- **What was verified:**
+  - C1: Document workspace build output exists, documents table in schema
+  - C2: Tiptap JSON state round-trips: headings, bold marks, bullet lists all preserved
+  - C3: Save, update, reload — content fidelity verified, title/status updates work
+  - Matter scoping: documents isolated per matter, FK constraint enforced
+  - Document deletion works
+- **Files added:** `vite.config.js`, `renderer/document/`, `server/storage/repositories/documents.js`, `server/routes/documents.js`, `server/tests/verify-document-foundation.js`
+- **Files modified:** `package.json`, `server/storage/schema.sql`, `server/server.js`, `preload.js`
+- **Build command:** `npm run build:document`
+- **Verification:** `cd server && node tests/verify-document-foundation.js`
+- **Cumulative:** M1 (167) + M2 (154) + M3-S01 (27) = 348 tests
+
 ### 2026-04-09 (Milestone 2 Slice 03)
 - **Slice:** Chat-Driven Navigation (OUTCOME-F1, F2)
 - **Result:** ALL TESTS PASSED (30/30)
@@ -299,7 +323,8 @@ Milestone 2 complete (154 tests across 3 slices).
 OUTCOME-B1 through B4 and F1/F2 verified at repository, API, and navigation levels.
 Agent integration (Claude SDK filling templates) requires manual testing with API credentials.
 
-Ready for Milestone 3 — Document workspace shell.
+Milestone 3 in progress. Slice 01 established the document data foundation + React/Tiptap build.
+Next: M3 Slice 02 — integrate the document workspace into the Electron app (load from main app, navigate to documents from matter context).
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
