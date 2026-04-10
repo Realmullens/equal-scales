@@ -102,7 +102,7 @@ Outcome tests:
 ---
 
 ## Milestone 4 — Collaboration foundation
-- Status: pending
+- Status: deferred (not needed for single-user MVP, 2026-04-09)
 - Goal: enable real-time collaborative document editing safely
 - Depends on: milestone 3
 

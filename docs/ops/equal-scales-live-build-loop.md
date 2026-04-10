@@ -352,7 +352,8 @@ Agent integration (Claude SDK filling templates) requires manual testing with AP
 Milestone 3 complete (3 slices, 68 new tests). Document workspace established with React/Tiptap editor,
 matter-scoped CRUD, and Electron window integration. 389 total tests across all milestones.
 
-Next: Milestone 4 — Collaboration foundation (Yjs + Hocuspocus for real-time collaborative editing).
+Milestone 4 (collaboration) deferred — not needed for single-user MVP.
+Next priorities: source document support, editor polish, or DOCX/PDF export — per Bailey's direction.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
