@@ -175,6 +175,21 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 2 Slice 02)
+- **Slice:** Drafting API Integration (full renderer flow simulation)
+- **Result:** ALL TESTS PASSED (50/50)
+- **What was verified:**
+  - Full API call sequence matching renderer flow: create client → create matter → list templates → get template detail → generate prompt → save draft → list drafts → reopen draft → save revision
+  - Version management via API (v1 → v2, both listed)
+  - Input validation (400/404 for bad requests across all endpoints)
+  - File browser API (root listing, DB files hidden)
+  - Template origin preserved through save/reopen cycle
+- **Files added:** `server/tests/verify-drafting-api-integration.js`
+- **Requires:** server running on localhost:3001
+- **Verification command:** `cd server && node tests/verify-drafting-api-integration.js`
+- **Cumulative:** M1 (167) + M2-S01 (74) + M2-S02 (50) = 291 tests
+- **M2 status:** Backend drafting loop fully verified. Renderer UX verified at API level. Agent-level integration (Claude SDK filling templates) requires manual testing with API credentials.
+
 ### 2026-04-09 (Milestone 2 Slice 01)
 - **Slice:** End-to-End Template-First Drafting Loop Verification
 - **Result:** ALL OUTCOME TESTS PASSED (74/74 tests)
@@ -260,9 +275,10 @@ None currently.
 
 ## Next automatic task
 
-Milestone 2 Slice 01 complete (74 tests). The core drafting loop (B1-B4) is verified at the backend level.
+Milestone 2 backend verification complete (124 tests across 2 slices).
+OUTCOME-B1 through B4 verified at repository and API levels.
 
-Next: Milestone 2 Slice 02 — verify the renderer-side drafting UX works end-to-end (workspace selector → template click → prompt sent → draft saved → draft preview → revision flow). This is a manual/integration verification since it requires the Electron app + Claude Agent SDK.
+Next: Manual integration test with Electron app + Claude Agent SDK to verify the full UI flow end-to-end. Then Milestone 2 can be marked done and Milestone 3 (document workspace shell) begins.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
