@@ -175,6 +175,18 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 3 Slice 02)
+- **Slice:** Document Workspace Integration into Electron App
+- **What was built:**
+  - IPC handler `open-document-editor` opens documents in dedicated BrowserWindow loading the React workspace
+  - Document creation modal (title input overlay, creates doc + opens editor)
+  - Documents panel on home screen (lists matter-scoped documents with + button)
+  - Documents load/refresh on workspace context changes (client/matter selection)
+  - Preload bridges: `openDocumentEditor()`, `createDocument()`, `listDocuments()`, `getDocument()`
+- **Files modified:** `main.js`, `preload.js`, `renderer/renderer.js`, `renderer/index.html`, `renderer/style.css`
+- **API verification:** Document CRUD endpoints tested (create, save content, retrieve, list, validation)
+- **All existing tests still pass** (348 total)
+
 ### 2026-04-09 (Milestone 3 Slice 01)
 - **Slice:** Document Workspace Foundation (OUTCOME-C1, C2, C3)
 - **Result:** ALL TESTS PASSED (27/27)
@@ -323,8 +335,9 @@ Milestone 2 complete (154 tests across 3 slices).
 OUTCOME-B1 through B4 and F1/F2 verified at repository, API, and navigation levels.
 Agent integration (Claude SDK filling templates) requires manual testing with API credentials.
 
-Milestone 3 in progress. Slice 01 established the document data foundation + React/Tiptap build.
-Next: M3 Slice 02 — integrate the document workspace into the Electron app (load from main app, navigate to documents from matter context).
+Milestone 3 in progress. Slice 01 (data + build) and Slice 02 (app integration) done.
+The document editor opens in a dedicated window from matter context.
+Next: M3 Slice 03 — document API integration test + milestone completion verification.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened

@@ -115,6 +115,7 @@ function init() {
     renderHomeActivity();
   });
   loadTemplates();
+  loadDocuments();
   restoreFileBrowserState();
   homeInput.focus();
 }
@@ -614,6 +615,116 @@ function setupVoiceWidget(widget, targetInput) {
   const tooltip = widget.querySelector('.voice-tooltip');
   if (tooltip) {
     tooltip.textContent = holdToRecord ? 'Press and hold to record' : 'Click to record';
+  }
+}
+
+// ==================== DOCUMENT WORKSPACE INTEGRATION ====================
+
+/**
+ * Create a new document in the active matter and open it in the editor.
+ */
+async function createAndOpenDocument() {
+  if (!currentMatterId) {
+    showToast('Select a matter first to create a document');
+    return;
+  }
+
+  // Use overlay for title input
+  const existing = document.querySelector('.draft-confirm-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'draft-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="draft-confirm-panel">
+      <h3>New Document</h3>
+      <input type="text" class="draft-confirm-instructions" placeholder="Document title..." style="margin-bottom:16px;padding:10px 12px;" autofocus />
+      <div class="draft-confirm-actions">
+        <button class="draft-confirm-cancel">Cancel</button>
+        <button class="draft-confirm-generate">Create & Open</button>
+      </div>
+    </div>
+  `;
+  document.querySelector('.main-content').appendChild(overlay);
+  const input = overlay.querySelector('input');
+  input.focus();
+
+  const submit = async () => {
+    const title = input.value.trim();
+    overlay.remove();
+    if (!title) return;
+    try {
+      const doc = await window.electronAPI.createDocument(currentMatterId, title);
+      showToast(`Document "${title}" created`);
+      await window.electronAPI.openDocumentEditor(doc.id, doc.title);
+    } catch (err) {
+      showToast('Failed: ' + err.message);
+    }
+  };
+
+  overlay.querySelector('.draft-confirm-generate').onclick = submit;
+  overlay.querySelector('.draft-confirm-cancel').onclick = () => overlay.remove();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') overlay.remove();
+  });
+}
+
+/**
+ * Open an existing document in the editor window.
+ */
+async function openDocumentInEditor(docId) {
+  try {
+    const doc = await window.electronAPI.getDocument(docId);
+    await window.electronAPI.openDocumentEditor(doc.id, doc.title);
+  } catch (err) {
+    showToast('Failed to open document: ' + err.message);
+  }
+}
+
+/**
+ * Load and render documents for the active matter in the home panels.
+ */
+async function loadDocuments() {
+  const panel = document.getElementById('homeDocumentsPanel');
+  const list = document.getElementById('documentsList');
+  if (!panel || !list) return;
+
+  if (!currentMatterId) {
+    list.innerHTML = '<div class="workspace-empty">Select a matter to see documents</div>';
+    return;
+  }
+
+  try {
+    const docs = await window.electronAPI.listDocuments(currentMatterId);
+    list.innerHTML = '';
+
+    if (docs.length === 0) {
+      list.innerHTML = '<div class="workspace-empty">No documents yet</div>';
+      return;
+    }
+
+    docs.forEach(doc => {
+      const item = document.createElement('div');
+      item.className = 'draft-item';
+      item.innerHTML = `
+        <svg class="draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <div class="draft-info">
+          <span class="draft-name">${escapeHtml(doc.title)}</span>
+          <span class="draft-meta">${doc.updated_at?.split(' ')[0] || ''}</span>
+        </div>
+        <span class="draft-status-badge status-${doc.status}">${doc.status}</span>
+      `;
+      item.onclick = () => openDocumentInEditor(doc.id);
+      list.appendChild(item);
+    });
+  } catch (err) {
+    list.innerHTML = '<div class="workspace-empty">Failed to load documents</div>';
   }
 }
 
@@ -1538,7 +1649,8 @@ function renderWorkspaceNav() {
         loadMattersForClient(client.id);
       }
       renderWorkspaceNav();
-      loadDrafts(); // refresh drafts for client scope
+      loadDrafts();
+      loadDocuments();
     };
 
     clientDiv.appendChild(header);
@@ -1599,7 +1711,8 @@ function selectMatter(client, matter) {
   currentMatterId = matter.id;
   expandedClients.add(client.id);
   renderWorkspaceNav();
-  loadDrafts(); // refresh drafts for new scope
+  loadDrafts();
+  loadDocuments();
   console.log('[Workspace] Selected matter:', matter.name, 'for client:', client.name);
 }
 
@@ -2424,6 +2537,10 @@ function setupEventListeners() {
   if (homeVoiceWidget) setupVoiceWidget(homeVoiceWidget, homeInput);
   const chatVoiceWidget = document.getElementById('chatVoiceWidget');
   if (chatVoiceWidget) setupVoiceWidget(chatVoiceWidget, messageInput);
+
+  // New document button
+  const newDocBtn = document.getElementById('newDocumentBtn');
+  if (newDocBtn) newDocBtn.addEventListener('click', createAndOpenDocument);
 
   // Finder-first file actions
   const openFinderBtn = document.getElementById('openInFinderBtn');

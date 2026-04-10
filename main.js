@@ -110,6 +110,31 @@ ipcMain.handle('transcribe-audio', async (event, audioBuffer) => {
   }
 });
 
+// Open document in a dedicated editor window
+ipcMain.handle('open-document-editor', (event, documentId, documentTitle) => {
+  const editorWindow = new BrowserWindow({
+    width: 900,
+    height: 700,
+    title: documentTitle || 'Document Editor',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  // Load the built React document workspace with the document ID as a query param
+  const distPath = path.join(__dirname, 'renderer', 'document-dist', 'index.html');
+  editorWindow.loadFile(distPath, { query: { id: documentId } });
+
+  editorWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  return { success: true };
+});
+
 // App lifecycle
 app.on('ready', () => {
   console.log('Electron app ready');

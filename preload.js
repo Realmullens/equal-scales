@@ -249,6 +249,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('transcribe-audio', audioBuffer);
   },
 
+  // Open document in editor window
+  openDocumentEditor: async (documentId, documentTitle) => {
+    return ipcRenderer.invoke('open-document-editor', documentId, documentTitle);
+  },
+
   // Document CRUD
   createDocument: async (matterId, title) => {
     const response = await fetch(`${SERVER_URL}/api/documents`, {
