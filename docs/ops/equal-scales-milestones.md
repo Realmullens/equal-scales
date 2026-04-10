@@ -83,7 +83,7 @@ Outcome tests:
 ---
 
 ## Milestone 3 — Document workspace shell
-- Status: in_progress (Slice 01 done: 27/27 tests, 2026-04-09)
+- Status: done (68 tests across 3 slices, 2026-04-09)
 - Goal: create the first structured document workspace inside the app
 - Depends on: milestone 2 or explicit approved parallel path
 

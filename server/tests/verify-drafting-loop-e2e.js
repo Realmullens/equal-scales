@@ -40,6 +40,7 @@ const db = getDb();
 // Clean test data
 db.prepare("DELETE FROM messages").run();
 db.prepare("DELETE FROM conversations").run();
+db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM drafts").run();
 db.prepare("DELETE FROM matters").run();
 db.prepare("DELETE FROM clients").run();
@@ -308,6 +309,7 @@ if (clientVault && fs.existsSync(clientVault)) {
   fs.rmSync(clientVault, { recursive: true, force: true });
 }
 
+db.prepare("DELETE FROM documents").run();
 db.prepare("DELETE FROM drafts").run();
 db.prepare("DELETE FROM matters").run();
 db.prepare("DELETE FROM clients").run();

@@ -175,6 +175,20 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 3 Slice 03)
+- **Slice:** Document API Integration + M3 Completion
+- **Result:** ALL TESTS PASSED (41/41 new + 348 existing = 389 total)
+- **What was verified:**
+  - C1: Document creation and retrieval via API
+  - C2: Structured Tiptap JSON content (headings, bold, italic, bullet lists, blockquotes) round-trips exactly
+  - C3: Save, edit, reload — content fidelity, title/status updates, matter association preserved
+  - Matter scoping: documents isolated per matter, FK constraints enforced
+  - Deletion works, input validation (400/404)
+  - React workspace build output verified
+- **Fix:** Added `DELETE FROM documents` to all test cleanup sections to prevent FK cascade failures
+- **Files added:** `server/tests/verify-document-api-integration.js`
+- **Cumulative:** 389 tests across 8 test suites, all passing
+
 ### 2026-04-09 (Milestone 3 Slice 02)
 - **Slice:** Document Workspace Integration into Electron App
 - **What was built:**
@@ -335,9 +349,10 @@ Milestone 2 complete (154 tests across 3 slices).
 OUTCOME-B1 through B4 and F1/F2 verified at repository, API, and navigation levels.
 Agent integration (Claude SDK filling templates) requires manual testing with API credentials.
 
-Milestone 3 in progress. Slice 01 (data + build) and Slice 02 (app integration) done.
-The document editor opens in a dedicated window from matter context.
-Next: M3 Slice 03 — document API integration test + milestone completion verification.
+Milestone 3 complete (3 slices, 68 new tests). Document workspace established with React/Tiptap editor,
+matter-scoped CRUD, and Electron window integration. 389 total tests across all milestones.
+
+Next: Milestone 4 — Collaboration foundation (Yjs + Hocuspocus for real-time collaborative editing).
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened
