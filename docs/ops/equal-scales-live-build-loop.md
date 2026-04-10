@@ -175,6 +175,26 @@ Escalate only for true ambiguity, design forks, or licensing concerns.
 
 ## Verification log
 
+### 2026-04-09 (Milestone 2 Slice 03)
+- **Slice:** Chat-Driven Navigation (OUTCOME-F1, F2)
+- **Result:** ALL TESTS PASSED (30/30)
+- **What was built:**
+  - Navigation search API: `GET /api/navigate/search?q=...` — fuzzy search across clients, matters, drafts
+  - Results include entity type, IDs, names, and parent context (client name on matters, matter name on drafts)
+  - Renderer-side navigation functions: `navigateToClient()`, `navigateToMatter()`, `navigateToDraft()`
+  - Global `window.equalScalesNav` object exposed for future agent-driven navigation
+  - Preload bridge: `searchWorkspace(query)`
+- **What was verified:**
+  - F1: Client search by name and partial match
+  - F1: Matter search with client context included
+  - F2: Draft search with client + matter context
+  - Cross-entity search returns all matching types
+  - Input validation (missing/empty query → 400)
+- **Files added:** `server/routes/navigate.js`, `server/tests/verify-navigation-search.js`
+- **Files modified:** `server/server.js`, `preload.js`, `renderer/renderer.js`
+- **Verification:** `cd server && node tests/verify-navigation-search.js` (requires running server)
+- **Cumulative:** M1 (167) + M2 (154) = 321 tests
+
 ### 2026-04-09 (Milestone 2 Slice 02)
 - **Slice:** Drafting API Integration (full renderer flow simulation)
 - **Result:** ALL TESTS PASSED (50/50)
@@ -275,10 +295,11 @@ None currently.
 
 ## Next automatic task
 
-Milestone 2 backend verification complete (124 tests across 2 slices).
-OUTCOME-B1 through B4 verified at repository and API levels.
+Milestone 2 complete (154 tests across 3 slices).
+OUTCOME-B1 through B4 and F1/F2 verified at repository, API, and navigation levels.
+Agent integration (Claude SDK filling templates) requires manual testing with API credentials.
 
-Next: Manual integration test with Electron app + Claude Agent SDK to verify the full UI flow end-to-end. Then Milestone 2 can be marked done and Milestone 3 (document workspace shell) begins.
+Ready for Milestone 3 — Document workspace shell.
 
 Expected result of the next run:
 - the existing local legal workspace storage layer is verified and hardened

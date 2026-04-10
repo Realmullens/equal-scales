@@ -617,6 +617,139 @@ function setupVoiceWidget(widget, targetInput) {
   }
 }
 
+// ==================== CHAT-DRIVEN NAVIGATION (OUTCOME-F1, F2) ====================
+
+/**
+ * Navigate to a client workspace by name or ID.
+ * Can be called from chat agent responses or user actions.
+ */
+async function navigateToClient(nameOrId) {
+  // Try direct ID match first
+  let client = allClients.find(c => c.id === nameOrId);
+
+  // Try name match
+  if (!client) {
+    const lower = nameOrId.toLowerCase();
+    client = allClients.find(c =>
+      c.name.toLowerCase().includes(lower) ||
+      (c.display_name && c.display_name.toLowerCase().includes(lower))
+    );
+  }
+
+  // Try search API if not found locally
+  if (!client) {
+    try {
+      const results = await window.electronAPI.searchWorkspace(nameOrId);
+      const match = results.results.find(r => r.type === 'client');
+      if (match) {
+        client = allClients.find(c => c.id === match.id);
+        if (!client) {
+          await loadClients();
+          client = allClients.find(c => c.id === match.id);
+        }
+      }
+    } catch (e) { /* fallback failed */ }
+  }
+
+  if (!client) {
+    showToast(`Client "${nameOrId}" not found`);
+    return false;
+  }
+
+  currentClientId = client.id;
+  currentMatterId = null;
+  updateWorkspaceSelectorLabel();
+  loadDrafts();
+  showToast(`Navigated to ${client.display_name || client.name}`);
+  return true;
+}
+
+/**
+ * Navigate to a matter workspace by name or ID.
+ */
+async function navigateToMatter(nameOrId) {
+  // Search across all clients' matters
+  let found = null;
+
+  for (const client of allClients) {
+    if (!client._matters) {
+      try { client._matters = await window.electronAPI.listMatters(client.id); } catch { client._matters = []; }
+    }
+    const match = client._matters.find(m =>
+      m.id === nameOrId || m.name.toLowerCase().includes(nameOrId.toLowerCase())
+    );
+    if (match) {
+      found = { client, matter: match };
+      break;
+    }
+  }
+
+  // Try search API
+  if (!found) {
+    try {
+      const results = await window.electronAPI.searchWorkspace(nameOrId);
+      const match = results.results.find(r => r.type === 'matter');
+      if (match) {
+        const client = allClients.find(c => c.id === match.client_id);
+        if (client) {
+          if (!client._matters) client._matters = await window.electronAPI.listMatters(client.id);
+          const matter = client._matters.find(m => m.id === match.id);
+          if (matter) found = { client, matter };
+        }
+      }
+    } catch (e) { /* fallback failed */ }
+  }
+
+  if (!found) {
+    showToast(`Matter "${nameOrId}" not found`);
+    return false;
+  }
+
+  currentClientId = found.client.id;
+  currentMatterId = found.matter.id;
+  updateWorkspaceSelectorLabel();
+  loadDrafts();
+  showToast(`Navigated to ${found.matter.name} (${found.client.display_name || found.client.name})`);
+  return true;
+}
+
+/**
+ * Navigate to a specific draft by title search.
+ */
+async function navigateToDraft(titleQuery) {
+  try {
+    const results = await window.electronAPI.searchWorkspace(titleQuery);
+    const match = results.results.find(r => r.type === 'draft');
+    if (match) {
+      // Set workspace context
+      currentClientId = match.client_id;
+      currentMatterId = match.matter_id;
+      updateWorkspaceSelectorLabel();
+      await loadDrafts();
+
+      // Open the draft preview
+      await openDraftPreview(match.id);
+      showToast(`Opened draft: ${match.title} v${match.version}`);
+      return true;
+    }
+  } catch (e) { /* search failed */ }
+
+  showToast(`Draft "${titleQuery}" not found`);
+  return false;
+}
+
+// Expose navigation functions globally for future agent integration
+window.equalScalesNav = {
+  navigateToClient,
+  navigateToMatter,
+  navigateToDraft,
+  openVaultInFinder,
+  openClientInFinder,
+  openMatterInFinder,
+  openDraftsInFinder,
+  openSourceDocsInFinder
+};
+
 // ==================== FINDER-FIRST FILE ACTIONS ====================
 
 /**

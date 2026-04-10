@@ -12,6 +12,7 @@ import matterRoutes from './routes/matters.js';
 import templateRoutes from './routes/templates.js';
 import draftRoutes from './routes/drafts.js';
 import fileRoutes from './routes/files.js';
+import navigateRoutes from './routes/navigate.js';
 import { seedDefaultTemplates, syncTemplates } from './services/template-service.js';
 import { gatherContext, formatContextForPrompt } from './services/context-service.js';
 
@@ -257,6 +258,7 @@ app.use('/api/matters', matterRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/navigate', navigateRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {

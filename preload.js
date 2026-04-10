@@ -249,6 +249,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('transcribe-audio', audioBuffer);
   },
 
+  // Navigation search — find clients, matters, drafts by name
+  searchWorkspace: async (query) => {
+    const response = await fetch(`${SERVER_URL}/api/navigate/search?q=${encodeURIComponent(query)}`);
+    if (!response.ok) throw new Error('Search failed');
+    return response.json();
+  },
+
   // Reveal a file/folder in Finder (selects it in parent)
   openInFinder: async (targetPath) => {
     return ipcRenderer.invoke('open-in-finder', targetPath);
